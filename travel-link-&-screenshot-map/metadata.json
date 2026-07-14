@@ -1,0 +1,6 @@
+{
+  "name": "Travel Link & Screenshot Map",
+  "description": "An application to save, divide, and map places to visit from website links and social media screenshots, utilizing AI to extract location details automatically.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
