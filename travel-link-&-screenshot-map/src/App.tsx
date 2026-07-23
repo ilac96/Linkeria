@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "./supabaseClient";
 import {
   Plane,
   PenTool,
@@ -11,12 +12,8 @@ import {
   Search,
   Heart,
   ExternalLink,
-  Navigation,
   Trash2,
-  CheckCircle,
-  Clock,
   Sparkles,
-  Info,
   Calendar,
   X,
   FileText
@@ -26,108 +23,93 @@ import MapComponent from "./components/MapComponent";
 import AddPlaceModal from "./components/AddPlaceModal";
 import AddOtherLinkModal from "./components/AddOtherLinkModal";
 
-// Pre-seeded initial data for Rome travel spots (matching screenshots)
-const INITIAL_PLACES: Place[] = [
-  {
-    id: "rome-1",
-    title: "Vicolo di Trastevere",
-    description: "Caratteristico vicolo romano rinfrescato dall'edera arrampicata, vespette parcheggiate e sanpietrini storici d'epoca.",
-    category: "sight",
-    lat: 41.8893,
-    lng: 12.4705,
-    walkingDirections: "Prendi la linea Tram 8 fino a Piazza Mastai, poi addentrati a piedi per 3 minuti.",
-    mapUrl: "https://www.google.com/maps/search/?api=1&query=Trastevere+Roma",
-    visited: false,
-    imageUrl: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=500&q=80",
-    createdAt: "2026-07-10T12:00:00Z",
-    favorite: true
-  },
-  {
-    id: "rome-2",
-    title: "La Gatta Buia Pizza",
-    description: "Una delle pizzerie e trattorie più rinomate di Trastevere per gustare l'autentica cacio e pepe e pizza romana croccante.",
-    category: "food",
-    lat: 41.8881,
-    lng: 12.4712,
-    walkingDirections: "A 5 minuti a piedi da Piazza di Santa Maria in Trastevere.",
-    mapUrl: "https://www.google.com/maps/search/?api=1&query=La+Gatta+Buia+Roma",
-    visited: false,
-    imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=500&q=80",
-    createdAt: "2026-07-11T14:30:00Z",
-    favorite: false
-  },
-  {
-    id: "rome-3",
-    title: "Giardino degli Aranci",
-    description: "Splendido parco pubblico sull'Aventino che offre una romantica e memorabile vista panoramica su tutta la cupola di San Pietro.",
-    category: "nature",
-    lat: 41.8848,
-    lng: 12.4797,
-    walkingDirections: "Sali la collina dell'Aventino partendo dal retro di Bocca della Verità, circa 8 minuti.",
-    mapUrl: "https://www.google.com/maps/search/?api=1&query=Giardino+degli+Aranci+Roma",
-    visited: true,
-    imageUrl: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=500&q=80",
-    createdAt: "2026-07-09T10:15:00Z",
-    favorite: true
-  },
-  {
-    id: "rome-4",
-    title: "Bioparco di Roma",
-    description: "Giardino zoologico storico situato all'interno della splendida cornice di Villa Borghese, perfetto per passeggiate all'aria aperta.",
-    category: "nature",
-    lat: 41.9175,
-    lng: 12.4862,
-    walkingDirections: "Tram 3 o 19, fermata Bioparco, oppure cammina partendo da Piazza del Popolo.",
-    mapUrl: "https://www.google.com/maps/search/?api=1&query=Bioparco+di+Roma",
-    visited: false,
-    imageUrl: "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=500&q=80",
-    createdAt: "2026-07-12T08:00:00Z",
-    favorite: false
-  }
-];
+// ============================================================
+// FUNZIONI DI CONVERSIONE tra le righe della tabella "links" su Supabase
+// e i tipi usati internamente dall'app (Place, GeneralLinkItem).
+// Prima erano in un file separato (lib/supabaseMappers.ts), le ho
+// spostate qui dentro per evitare problemi di cartelle/import.
+// ============================================================
 
-const INITIAL_OTHER_LINKS: GeneralLinkItem[] = [
-  {
-    id: "other-1",
-    title: "Moodboard arredamento casa rurale",
-    link: "https://pinterest.com/design-ideas",
-    description: "Idee di palette calde, mattoni a vista, grandi tavoli in rovere e lampade vintage in rame.",
-    notes: "Ispirazione per ristrutturare la camera degli ospiti.",
-    category: "ideas",
-    createdAt: "2026-07-11T10:00:00Z",
-    imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=300&q=80"
-  },
-  {
-    id: "other-2",
-    title: "Le città invisibili (Italo Calvino)",
-    link: "https://www.goodreads.com/book/show/9803.Invisible_Cities",
-    description: "Dialogo poetico tra Marco Polo e Kublai Khan su città fantastiche, sospese e metaforiche.",
-    notes: "Da rileggere prima del prossimo viaggio in Asia.",
-    category: "books",
-    createdAt: "2026-07-10T16:20:00Z",
-    imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80"
-  },
-  {
-    id: "other-3",
-    title: "La Grande Bellezza - Sorrentino",
-    link: "https://www.imdb.com/title/tt2358891/",
-    description: "Affascinante passeggiata decadente nella Roma mondana, tra feste sul tetto e passeggiate all'alba sul Tevere.",
-    notes: "Oscar miglior film straniero. Fotografia spettacolare.",
-    category: "movies",
-    createdAt: "2026-07-08T21:00:00Z",
-    imageUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=300&q=80"
-  },
-  {
-    id: "other-4",
-    title: "La vera Carbonara di Roma (GialloZafferano)",
-    link: "https://www.giallozafferano.it/ricette/Spaghetti-alla-Carbonara.html",
-    description: "Ricetta tradizionale: guanciale romano stagionato, pecorino romano DOP, tuorli d'uovo, pepe nero.",
-    notes: "Niente panna! Cuocere il guanciale a fuoco medio senza olio aggiunto.",
-    category: "recipes",
-    createdAt: "2026-07-12T09:15:00Z",
-    imageUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=300&q=80"
-  }
-];
+interface LinksRow {
+  id: string;
+  created_at: string;
+  category: string;
+  source_type: string | null;
+  title: string;
+  original_url: string | null;
+  image_url: string | null;
+  notes: string | null;
+  status: string | null;
+  metadata: Record<string, any> | null;
+}
+
+function rowToPlace(row: LinksRow): Place {
+  const meta = row.metadata || {};
+  return {
+    id: row.id,
+    title: row.title,
+    description: meta.description || "",
+    category: (meta.subcategory as "food" | "sight" | "nature") || "sight",
+    lat: typeof meta.lat === "number" ? meta.lat : 0,
+    lng: typeof meta.lng === "number" ? meta.lng : 0,
+    walkingDirections: meta.walkingDirections || "",
+    mapUrl: row.original_url || meta.mapUrl || "",
+    visited: row.status === "visited",
+    imageUrl: row.image_url || "",
+    createdAt: row.created_at,
+    favorite: !!meta.favorite,
+  };
+}
+
+function placeToInsertRow(place: Omit<Place, "id" | "createdAt" | "visited">) {
+  return {
+    category: "travel",
+    source_type: "manual",
+    title: place.title,
+    original_url: place.mapUrl || null,
+    image_url: place.imageUrl || null,
+    notes: null,
+    status: "to_visit",
+    metadata: {
+      subcategory: place.category,
+      description: place.description,
+      lat: place.lat,
+      lng: place.lng,
+      walkingDirections: place.walkingDirections,
+      mapUrl: place.mapUrl,
+      favorite: place.favorite,
+    },
+  };
+}
+
+function rowToOtherLink(row: LinksRow): GeneralLinkItem {
+  const meta = row.metadata || {};
+  return {
+    id: row.id,
+    title: row.title,
+    link: row.original_url || "",
+    description: meta.description || "",
+    notes: row.notes || "",
+    category: row.category as GeneralLinkItem["category"],
+    createdAt: row.created_at,
+    imageUrl: row.image_url || "",
+  };
+}
+
+function otherLinkToInsertRow(item: Omit<GeneralLinkItem, "id" | "createdAt">) {
+  return {
+    category: item.category,
+    source_type: "manual",
+    title: item.title,
+    original_url: item.link || null,
+    image_url: item.imageUrl || null,
+    notes: item.notes || null,
+    status: null,
+    metadata: {
+      description: item.description,
+    },
+  };
+}
 
 export default function App() {
   // Navigation State
@@ -135,16 +117,10 @@ export default function App() {
   const [travelSubTab, setTravelSubTab] = useState<"da-visitare" | "visitati">("da-visitare");
   const [layoutMode, setLayoutMode] = useState<"list" | "map">("list");
 
-  // Places and Links State with local persistence
-  const [places, setPlaces] = useState<Place[]>(() => {
-    const local = localStorage.getItem("travel_places");
-    return local ? JSON.parse(local) : INITIAL_PLACES;
-  });
-
-  const [otherLinks, setOtherLinks] = useState<GeneralLinkItem[]>(() => {
-    const local = localStorage.getItem("travel_other_links");
-    return local ? JSON.parse(local) : INITIAL_OTHER_LINKS;
-  });
+  // Dati caricati da Supabase (partono vuoti, si popolano dopo il fetch)
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [otherLinks, setOtherLinks] = useState<GeneralLinkItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,78 +132,178 @@ export default function App() {
   const [isOtherLinkModalOpen, setIsOtherLinkModalOpen] = useState(false);
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Sync to localStorage
+  // ---------- CARICAMENTO DATI DA SUPABASE ----------
+  // Una sola tabella "links": leggiamo tutto e dividiamo lato client
+  // tra "travel" (-> places) e tutto il resto (-> otherLinks).
   useEffect(() => {
-    localStorage.setItem("travel_places", JSON.stringify(places));
-  }, [places]);
+    const caricaDatiDaSupabase = async () => {
+      try {
+        setLoading(true);
 
-  useEffect(() => {
-    localStorage.setItem("travel_other_links", JSON.stringify(otherLinks));
-  }, [otherLinks]);
+        const { data, error } = await supabase
+          .from("links")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-  // Handle adding a place from AI Modal
-  const handleAddPlace = (newPlace: Omit<Place, "id" | "createdAt" | "visited">) => {
-    const place: Place = {
-      ...newPlace,
-      id: "place-" + Date.now(),
-      createdAt: new Date().toISOString(),
-      visited: false // Add to "Da visitare" by default
+        if (error) throw error;
+
+        const rows = (data || []) as LinksRow[];
+
+        const travelRows = rows.filter((r) => r.category === "travel");
+        const otherRows = rows.filter((r) => r.category !== "travel");
+
+        setPlaces(travelRows.map(rowToPlace));
+        setOtherLinks(otherRows.map(rowToOtherLink));
+      } catch (error) {
+        console.error("Errore nel caricamento da Supabase:", error);
+      } finally {
+        setLoading(false);
+      }
     };
-    setPlaces([place, ...places]);
-    setClickedCoords(null);
+
+    caricaDatiDaSupabase();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center font-medium text-slate-500">
+        Connessione al database in corso...
+      </div>
+    );
+  }
+
+  // ---------- AGGIUNTA DI UN NUOVO POSTO (VIAGGI) ----------
+  const handleAddPlace = async (newPlace: Omit<Place, "id" | "createdAt" | "visited">) => {
+    try {
+      const rowToInsert = placeToInsertRow(newPlace);
+
+      const { data, error } = await supabase
+        .from("links")
+        .insert([rowToInsert])
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const inserted = rowToPlace(data[0] as LinksRow);
+        setPlaces([inserted, ...places]);
+      }
+
+      setClickedCoords(null);
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error("Errore durante il salvataggio su Supabase:", error);
+      alert("Non è stato possibile salvare il punto sulla mappa. Riprova!");
+    }
   };
 
-  // Handle adding other general links
-  const handleAddOtherLink = (newItem: Omit<GeneralLinkItem, "id" | "createdAt">) => {
-    const item: GeneralLinkItem = {
-      ...newItem,
-      id: "item-" + Date.now(),
-      createdAt: new Date().toISOString()
+  // ---------- AGGIUNTA DI UN NUOVO LINK (IDEE / LIBRI / FILM / RICETTE) ----------
+  const handleAddOtherLink = async (newItem: Omit<GeneralLinkItem, "id" | "createdAt">) => {
+    try {
+      const rowToInsert = otherLinkToInsertRow(newItem);
+
+      const { data, error } = await supabase
+        .from("links")
+        .insert([rowToInsert])
+        .select();
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const inserted = rowToOtherLink(data[0] as LinksRow);
+        setOtherLinks([inserted, ...otherLinks]);
+      }
+
+      setIsOtherLinkModalOpen(false);
+    } catch (error) {
+      console.error("Errore durante il salvataggio su Supabase:", error);
+      alert("Non è stato possibile salvare il link. Riprova!");
+    }
+  };
+
+  // ---------- TOGGLE VISITATO ("Da visitare" <-> "Visitati") ----------
+  const handleToggleVisited = async (id: string) => {
+    const place = places.find((p) => p.id === id);
+    if (!place) return;
+    const nuovoStatus = place.visited ? "to_visit" : "visited";
+
+    // Aggiorniamo subito la UI (ottimistico), poi confermiamo su Supabase
+    setPlaces(places.map((p) => (p.id === id ? { ...p, visited: !p.visited } : p)));
+
+    const { error } = await supabase
+      .from("links")
+      .update({ status: nuovoStatus })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Errore aggiornando lo stato visitato:", error);
+    }
+  };
+
+  // ---------- TOGGLE PREFERITO ----------
+  const handleToggleFavorite = async (id: string) => {
+    const place = places.find((p) => p.id === id);
+    if (!place) return;
+    const nuovoMetadata = {
+      subcategory: place.category,
+      description: place.description,
+      lat: place.lat,
+      lng: place.lng,
+      walkingDirections: place.walkingDirections,
+      mapUrl: place.mapUrl,
+      favorite: !place.favorite,
     };
-    setOtherLinks([item, ...otherLinks]);
+
+    setPlaces(places.map((p) => (p.id === id ? { ...p, favorite: !p.favorite } : p)));
+
+    const { error } = await supabase
+      .from("links")
+      .update({ metadata: nuovoMetadata })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Errore aggiornando il preferito:", error);
+    }
   };
 
-  // Toggle visited status ("Da visitare" <-> "Visitati")
-  const handleToggleVisited = (id: string) => {
-    setPlaces(places.map(p => p.id === id ? { ...p, visited: !p.visited } : p));
-  };
-
-  // Toggle heart favorite
-  const handleToggleFavorite = (id: string) => {
-    setPlaces(places.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p));
-  };
-
-  // Delete travel spot
-  const handleDeletePlace = (id: string) => {
-    setPlaces(places.filter(p => p.id !== id));
+  // ---------- ELIMINA POSTO (VIAGGI) ----------
+  const handleDeletePlace = async (id: string) => {
+    setPlaces(places.filter((p) => p.id !== id));
     if (selectedPlaceId === id) setSelectedPlaceId(null);
+
+    const { error } = await supabase.from("links").delete().eq("id", id);
+    if (error) {
+      console.error("Errore eliminando il posto:", error);
+    }
   };
 
-  // Delete other general link
-  const handleDeleteOtherLink = (id: string) => {
-    setOtherLinks(otherLinks.filter(item => item.id !== id));
+  // ---------- ELIMINA ALTRO LINK ----------
+  const handleDeleteOtherLink = async (id: string) => {
+    setOtherLinks(otherLinks.filter((item) => item.id !== id));
+
+    const { error } = await supabase.from("links").delete().eq("id", id);
+    if (error) {
+      console.error("Errore eliminando il link:", error);
+    }
   };
 
-  // Map Click triggers adding a place at exact spot
+  // Click sulla mappa apre il modale per aggiungere un posto in quel punto
   const handleMapClickToAdd = (lat: number, lng: number) => {
     setClickedCoords({ lat, lng });
     setIsAddModalOpen(true);
   };
 
-  // Filtered lists computation
+  // ---------- FILTRI ----------
   const filteredPlaces = places.filter((place) => {
-    // 1. Tab match
     const isTabMatch = travelSubTab === "da-visitare" ? !place.visited : place.visited;
     if (!isTabMatch) return false;
 
-    // 2. Search match
     const matchesSearch =
       place.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       place.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       place.walkingDirections.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
 
-    // 3. Category match
     if (selectedCategoryFilter && place.category !== selectedCategoryFilter) return false;
 
     return true;
@@ -245,10 +321,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:py-8 md:px-4 items-center justify-start">
-      {/* Container simulating high-fidelity smartphone device, centered beautifully on desktop */}
       <div className="w-full md:max-w-md bg-white md:rounded-[40px] md:shadow-2xl overflow-hidden flex flex-col h-screen md:h-[840px] relative border border-slate-200">
-        
-        {/* Device camera cutout & speaker mock for premium mobile fidelity */}
+
         <div className="hidden md:flex justify-center items-center h-6 bg-slate-900 text-[10px] text-slate-400 px-6 justify-between select-none shrink-0 z-40">
           <span className="font-medium text-white/90">09:41</span>
           <div className="w-16 h-4 bg-black rounded-full absolute top-1 left-1/2 -translate-x-1/2" />
@@ -258,11 +332,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* TOP BAR / NAVIGATION (Replicating Screenshots 1, 2, 3, 4) */}
         <div className="bg-white border-b border-slate-100 p-4 pt-5 shrink-0 shadow-sm z-30">
           <div className="flex justify-between items-center mb-4">
-            
-            {/* Left Title: Airplane icon + "Travel" title */}
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-orange-50 rounded-xl text-[#d64b38]">
                 <Plane className="w-5 h-5 fill-current transform -rotate-12" />
@@ -276,7 +347,6 @@ export default function App() {
               </h1>
             </div>
 
-            {/* Right: List/Map Switch toggle (Only active on "Travel" tab) */}
             {activeTab === "travel" && (
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm">
                 <button
@@ -308,7 +378,6 @@ export default function App() {
             )}
           </div>
 
-          {/* Sub-Tabs: "Da visitare" & "Visitati" (Only shown when Travel category is active) */}
           {activeTab === "travel" ? (
             <div className="flex border-b border-slate-200 text-center">
               <button
@@ -345,7 +414,6 @@ export default function App() {
               </button>
             </div>
           ) : (
-            /* Helpful indicator for other tabs */
             <p className="text-xs text-slate-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 flex items-center gap-1.5 font-medium">
               <Sparkles className="w-3.5 h-3.5 text-orange-500 fill-orange-200" />
               Siti e link salvati divisi per categoria
@@ -353,10 +421,7 @@ export default function App() {
           )}
         </div>
 
-        {/* MAIN BODY WORKSPACE (Scrollable lists or map canvas) */}
         <div className="flex-1 overflow-hidden relative flex flex-col bg-slate-50">
-          
-          {/* SEARCH BAR (Matching Screenshot 4 "Cerca luogo" design) */}
           <div className="p-3 bg-white border-b border-slate-100 flex flex-col gap-2 shrink-0 shadow-sm z-10">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -377,11 +442,10 @@ export default function App() {
               )}
             </div>
 
-            {/* MAP FILTER CIRCULAR BUTTONS (Screenshot 4 Rome map filters detail) */}
             {activeTab === "travel" && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-0.5">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Filtra:</span>
-                
+
                 <button
                   onClick={() => setSelectedCategoryFilter(null)}
                   className={`px-3 py-1 rounded-full text-[10px] font-semibold transition-all shrink-0 border ${
@@ -390,7 +454,7 @@ export default function App() {
                       : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
                   }`}
                 >
-                  Tutti ({places.filter(p => travelSubTab === "da-visitare" ? !p.visited : p.visited).length})
+                  Tutti ({places.filter((p) => (travelSubTab === "da-visitare" ? !p.visited : p.visited)).length})
                 </button>
 
                 <button
@@ -401,7 +465,7 @@ export default function App() {
                       : "bg-white text-slate-700 border-slate-200 hover:bg-amber-50"
                   }`}
                 >
-                  <span className="text-xs">🍕</span> Cibo ({places.filter(p => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "food").length})
+                  <span className="text-xs">🍕</span> Cibo ({places.filter((p) => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "food").length})
                 </button>
 
                 <button
@@ -412,7 +476,7 @@ export default function App() {
                       : "bg-white text-slate-700 border-slate-200 hover:bg-sky-50"
                   }`}
                 >
-                  <span className="text-xs">📸</span> Attrazioni ({places.filter(p => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "sight").length})
+                  <span className="text-xs">📸</span> Attrazioni ({places.filter((p) => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "sight").length})
                 </button>
 
                 <button
@@ -423,19 +487,15 @@ export default function App() {
                       : "bg-white text-slate-700 border-slate-200 hover:bg-emerald-50"
                   }`}
                 >
-                  <span className="text-xs">🌳</span> Natura ({places.filter(p => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "nature").length})
+                  <span className="text-xs">🌳</span> Natura ({places.filter((p) => (travelSubTab === "da-visitare" ? !p.visited : p.visited) && p.category === "nature").length})
                 </button>
               </div>
             )}
           </div>
 
-          {/* MAIN CONTAINER AREA */}
           <div className="flex-1 relative overflow-hidden">
-            
-            {/* TRAVEL VIEW */}
             {activeTab === "travel" && (
               layoutMode === "map" ? (
-                /* Map View Mode (Screenshot 3 & 4) */
                 <div className="w-full h-full">
                   <MapComponent
                     places={filteredPlaces}
@@ -448,7 +508,6 @@ export default function App() {
                   />
                 </div>
               ) : (
-                /* List View Mode (Screenshot 2 exact style replication) */
                 <div className="w-full h-full overflow-y-auto p-4 flex flex-col gap-4">
                   {filteredPlaces.length === 0 ? (
                     <div className="text-center py-16 flex flex-col items-center justify-center gap-3">
@@ -468,7 +527,6 @@ export default function App() {
                         key={place.id}
                         className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px]"
                       >
-                        {/* Left image - Vespa on Italian street screenshot reproduction */}
                         <div className="w-1/3 min-w-[100px] h-full relative bg-slate-100 shrink-0">
                           <img
                             src={place.imageUrl}
@@ -484,7 +542,6 @@ export default function App() {
                           </button>
                         </div>
 
-                        {/* Right Content */}
                         <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
                           <div className="flex flex-col gap-0.5">
                             <div className="flex justify-between items-start gap-1">
@@ -501,7 +558,6 @@ export default function App() {
                             </p>
                           </div>
 
-                          {/* Detail Button exactly matches Coral red "Dettaglio" in Screenshots */}
                           <div className="flex justify-between items-center pt-1 border-t border-slate-50">
                             <div className="flex items-center gap-1.5">
                               <button
@@ -515,9 +571,8 @@ export default function App() {
                                 {place.visited ? "✓ Visitato" : "Visita"}
                               </button>
                             </div>
-                            
+
                             <div className="flex items-center gap-2">
-                              {/* Delete button */}
                               <button
                                 onClick={() => handleDeletePlace(place.id)}
                                 className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors"
@@ -526,11 +581,10 @@ export default function App() {
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
 
-                              {/* Replicating Screenshots Red/Coral button "Dettaglio" */}
                               <button
                                 onClick={() => {
                                   setSelectedPlaceId(place.id);
-                                  setLayoutMode("map"); // Switch layout to map and center
+                                  setLayoutMode("map");
                                 }}
                                 className="bg-[#d64b38] hover:bg-[#c0402e] text-white text-[11px] font-bold px-3.5 py-1 rounded-lg transition-colors shadow-sm cursor-pointer"
                               >
@@ -539,7 +593,6 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-
                       </div>
                     ))
                   )}
@@ -547,7 +600,6 @@ export default function App() {
               )
             )}
 
-            {/* OTHER SAVED LINK CATEGORIES (Ideas, Books, Movies, Recipes) */}
             {activeTab !== "travel" && (
               <div className="w-full h-full overflow-y-auto p-4 flex flex-col gap-4">
                 {filteredOtherLinks.length === 0 ? (
@@ -572,15 +624,23 @@ export default function App() {
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex flex-col min-w-0">
                             <h3 className="font-bold text-slate-800 text-sm truncate">{item.title}</h3>
-                            <a
-                              href={item.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[10px] text-orange-500 hover:underline inline-flex items-center gap-1 mt-0.5 truncate"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              {new URL(item.link).hostname}
-                            </a>
+                            {item.link && (
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-orange-500 hover:underline inline-flex items-center gap-1 mt-0.5 truncate"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                {(() => {
+                                  try {
+                                    return new URL(item.link).hostname;
+                                  } catch {
+                                    return item.link;
+                                  }
+                                })()}
+                              </a>
+                            )}
                           </div>
 
                           <button
@@ -608,14 +668,16 @@ export default function App() {
                             <Calendar className="w-3 h-3" />
                             {new Date(item.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
                           </span>
-                          <a
-                            href={item.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-1 px-3 rounded-lg transition-colors cursor-pointer"
-                          >
-                            Apri Link
-                          </a>
+                          {item.link && (
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-1 px-3 rounded-lg transition-colors cursor-pointer"
+                            >
+                              Apri Link
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -624,7 +686,6 @@ export default function App() {
               </div>
             )}
 
-            {/* FLOATING ACTION BUTTON (Screenshot 1 & 2 bottom-right Red Coral Button) */}
             <button
               onClick={() => {
                 setClickedCoords(null);
@@ -639,15 +700,10 @@ export default function App() {
             >
               <Plus className="w-6 h-6 stroke-[3px]" />
             </button>
-
           </div>
-
         </div>
 
-        {/* BOTTOM NAVIGATION BAR (Screenshots Solid Red/Coral Bar with 5 tabs) */}
         <div className="bg-[#d64b38] py-3.5 px-4 flex justify-around items-center shrink-0 z-40 shadow-xl border-t border-orange-700/20 select-none">
-          
-          {/* 1. Travel (Airplane) */}
           <button
             onClick={() => setActiveTab("travel")}
             className={`flex flex-col items-center gap-1 transition-all ${
@@ -660,7 +716,6 @@ export default function App() {
             <span className="text-[9px] tracking-wide">Viaggi</span>
           </button>
 
-          {/* 2. Ideas (Pencil/Ruler) */}
           <button
             onClick={() => setActiveTab("ideas")}
             className={`flex flex-col items-center gap-1 transition-all ${
@@ -673,7 +728,6 @@ export default function App() {
             <span className="text-[9px] tracking-wide">Idee</span>
           </button>
 
-          {/* 3. Books (Books / Reading) */}
           <button
             onClick={() => setActiveTab("books")}
             className={`flex flex-col items-center gap-1 transition-all ${
@@ -686,7 +740,6 @@ export default function App() {
             <span className="text-[9px] tracking-wide">Libri</span>
           </button>
 
-          {/* 4. Film (Film reel) */}
           <button
             onClick={() => setActiveTab("movies")}
             className={`flex flex-col items-center gap-1 transition-all ${
@@ -699,7 +752,6 @@ export default function App() {
             <span className="text-[9px] tracking-wide">Film & Video</span>
           </button>
 
-          {/* 5. Chef (Chef hat) */}
           <button
             onClick={() => setActiveTab("recipes")}
             className={`flex flex-col items-center gap-1 transition-all ${
@@ -711,12 +763,9 @@ export default function App() {
             <ChefHat className="w-5.5 h-5.5" />
             <span className="text-[9px] tracking-wide">Ricette</span>
           </button>
-
         </div>
-
       </div>
 
-      {/* MODALS */}
       <AddPlaceModal
         isOpen={isAddModalOpen}
         onClose={() => {
