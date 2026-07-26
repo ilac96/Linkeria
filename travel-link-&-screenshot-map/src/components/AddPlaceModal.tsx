@@ -28,7 +28,18 @@ async function geocodeAddress(query: string) {
   }
   return null;
 }
-
+function extractCoordsFromMapsLink(url: string) {
+  // Formato tipo: .../@41.9028,12.4964,15z oppure ?q=41.9028,12.4964
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) };
+  }
+  const qMatch = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (qMatch) {
+    return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) };
+  }
+  return null;
+}
 export default function AddPlaceModal({
   isOpen,
   onClose,
@@ -43,6 +54,8 @@ export default function AddPlaceModal({
   const [loadingMessage, setLoadingMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<any | null>(null);
+  const [manualLocationInput, setManualLocationInput] = useState("");
+const [isResolvingLocation, setIsResolvingLocation] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,21 +132,36 @@ export default function AddPlaceModal({
 
       if (aiResult?.error) throw new Error(aiResult.error);
 
-      let coords = clickedCoords ? { lat: clickedCoords.lat, lng: clickedCoords.lng } : null;
-      if (!coords && aiResult.searchQuery) {
-        coords = await geocodeAddress(aiResult.searchQuery || aiResult.title);
-      }
+      // 1. Priorità: coordinate già geocodate dalla edge function (server-side, più affidabile)
+// 1. Priorità: coordinate già geocodate dalla edge function (server-side, più affidabile)
+let coords: { lat: number; lng: number } | null = null;
 
-      setExtractedData({
-        title: aiResult.title || "Nuovo Luogo",
-        description: aiResult.description || "Aggiunto automaticamente dall'AI.",
-        category: aiResult.category || "sight",
-        lat: coords ? coords.lat : 41.8902,
-        lng: coords ? coords.lng : 12.4922,
-        walkingDirections: "Raggiungibile a piedi o con i mezzi.",
-        mapUrl: cleanLink || (coords ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}` : ""),
-        imageUrl: selectedImage,
-      });
+if (
+  typeof aiResult.latitude === "number" &&
+  typeof aiResult.longitude === "number"
+) {
+  coords = { lat: aiResult.latitude, lng: aiResult.longitude };
+}
+
+// 2. Fallback: geocoding client-side, solo se il server non ha trovato nulla
+if (!coords && aiResult.searchQuery) {
+  coords = await geocodeAddress(aiResult.searchQuery || aiResult.title);
+}
+
+const coordsAreFallback = !coords;
+
+setExtractedData({
+  title: aiResult.title || "Nuovo Luogo",
+  description: aiResult.description || "Aggiunto automaticamente dall'AI.",
+  category: aiResult.category || "sight",
+  lat: coords ? coords.lat : 41.8902,
+  lng: coords ? coords.lng : 12.4922,
+  coordsAreFallback,
+  walkingDirections: "Raggiungibile a piedi o con i mezzi.",
+  mapUrl: cleanLink || (coords ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}` : ""),
+  imageUrl: selectedImage || aiResult.wikiImageUrl || null,
+});
+
     } catch (err: any) {
       console.error(err);
       setError(err?.message || "Impossibile analizzare con l'AI.");
@@ -141,7 +169,36 @@ export default function AddPlaceModal({
       setIsLoading(false);
     }
   };
+const handleResolveManualLocation = async () => {
+  const query = manualLocationInput.trim();
+  if (!query) return;
 
+  setIsResolvingLocation(true);
+  setError(null);
+
+  try {
+    let coords = extractCoordsFromMapsLink(query);
+    if (!coords) {
+      coords = await geocodeAddress(query);
+    }
+
+    if (!coords) {
+      setError("Non sono riuscita a trovare questa posizione. Prova con un link Google Maps o un indirizzo più specifico.");
+      return;
+    }
+
+    setExtractedData({
+      ...extractedData,
+      lat: coords.lat,
+      lng: coords.lng,
+      coordsAreFallback: false,
+      mapUrl: extractedData.mapUrl || `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`,
+    });
+    setManualLocationInput("");
+  } finally {
+    setIsResolvingLocation(false);
+  }
+};
   const handleSavePlace = () => {
     if (!extractedData.title) return;
 
@@ -295,9 +352,34 @@ export default function AddPlaceModal({
                 <Check className="w-4 h-4 shrink-0 text-emerald-600" />
                 L'AI ha trovato il posto! Controlla e conferma:
               </div>
-
+{extractedData.coordsAreFallback && (
+  <div className="bg-amber-50 rounded-xl p-3 border border-amber-200 flex flex-col gap-2">
+    <div className="flex gap-2 items-start text-xs text-amber-700 font-medium">
+      <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+      <span>Non ho trovato la posizione esatta. Incolla un link Google Maps o un indirizzo più preciso:</span>
+    </div>
+    <div className="flex gap-2">
+      <input
+        type="text"
+        placeholder="https://maps.google.com/... oppure Via Roma 1, Milano"
+        value={manualLocationInput}
+        onChange={(e) => setManualLocationInput(e.target.value)}
+        className="flex-1 px-3 py-2 rounded-lg bg-white border border-amber-200 text-xs outline-none focus:ring-2 focus:ring-amber-400"
+      />
+      <button
+        type="button"
+        onClick={handleResolveManualLocation}
+        disabled={isResolvingLocation || !manualLocationInput.trim()}
+        className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold shrink-0 cursor-pointer"
+      >
+        {isResolvingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Trova"}
+      </button>
+    </div>
+  </div>
+)}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Nome e Città</label>
+                
                 <input
                   type="text"
                   value={extractedData.title}

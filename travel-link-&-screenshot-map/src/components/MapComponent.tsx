@@ -10,7 +10,6 @@ interface MapComponentProps {
   onDeletePlace: (id: string) => void;
   selectedPlaceId: string | null;
   setSelectedPlaceId: (id: string | null) => void;
-  onMapClick?: (lat: number, lng: number) => void;
 }
 
 export default function MapComponent({
@@ -20,7 +19,6 @@ export default function MapComponent({
   onDeletePlace,
   selectedPlaceId,
   setSelectedPlaceId,
-  onMapClick,
 }: MapComponentProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -54,17 +52,13 @@ export default function MapComponent({
     // Add Zoom Control on the top-right
     L.control.zoom({ position: "topright" }).addTo(map);
 
-    // Click on map to drop a coordinate and suggest adding
-    map.on("click", (e: L.LeafletMouseEvent) => {
-      // Don't trigger if clicked on a marker
-      if ((e.originalEvent.target as HTMLElement).closest(".leaflet-marker-icon")) {
-        return;
-      }
-      setSelectedPlaceId(null);
-      if (onMapClick) {
-        onMapClick(e.latlng.lat, e.latlng.lng);
-      }
-    });
+   // Click on map (outside markers) just deselects the active place
+map.on("click", (e: L.LeafletMouseEvent) => {
+  if ((e.originalEvent.target as HTMLElement).closest(".leaflet-marker-icon")) {
+    return;
+  }
+  setSelectedPlaceId(null);
+});
 
     mapRef.current = map;
 
@@ -157,12 +151,6 @@ export default function MapComponent({
     <div className="relative w-full h-full min-h-[300px] rounded-2xl overflow-hidden shadow-inner border border-slate-100">
       {/* Map Element */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
-
-      {/* Floating Instructions Banner */}
-      <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md text-xs font-medium text-slate-700 pointer-events-none z-10 border border-slate-100 flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-        Clicca sulla mappa per aggiungere una tappa qui!
-      </div>
 
       {/* Detail Overlay Card - Screenshot 3 exact reproduction */}
       {activePlace && (

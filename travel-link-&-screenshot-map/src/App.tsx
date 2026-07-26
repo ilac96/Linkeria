@@ -23,6 +23,7 @@ import MapComponent from "./components/MapComponent";
 import AddPlaceModal from "./components/AddPlaceModal";
 import AddOtherLinkModal from "./components/AddOtherLinkModal";
 
+
 // ============================================================
 // FUNZIONI DI CONVERSIONE tra le righe della tabella "links" su Supabase
 // e i tipi usati internamente dall'app (Place, GeneralLinkItem).
@@ -378,47 +379,52 @@ export default function App() {
             )}
           </div>
 
-          {activeTab === "travel" ? (
-            <div className="flex border-b border-slate-200 text-center">
-              <button
-                onClick={() => {
-                  setTravelSubTab("da-visitare");
-                  setSelectedPlaceId(null);
-                }}
-                className={`flex-1 pb-2.5 text-sm font-medium transition-all relative ${
-                  travelSubTab === "da-visitare"
-                    ? "text-[#d64b38] font-bold"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                Da visitare
-                {travelSubTab === "da-visitare" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#d64b38] rounded-full" />
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setTravelSubTab("visitati");
-                  setSelectedPlaceId(null);
-                }}
-                className={`flex-1 pb-2.5 text-sm font-medium transition-all relative ${
-                  travelSubTab === "visitati"
-                    ? "text-[#d64b38] font-bold"
-                    : "text-slate-400 hover:text-slate-600"
-                }`}
-              >
-                Visitati
-                {travelSubTab === "visitati" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#d64b38] rounded-full" />
-                )}
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-slate-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 flex items-center gap-1.5 font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-orange-500 fill-orange-200" />
-              Siti e link salvati divisi per categoria
-            </p>
-          )}
+          {activeTab === "travel" && layoutMode === "list" ? (
+  <div className="flex border-b border-slate-200 text-center">
+    <button
+      onClick={() => {
+        setTravelSubTab("da-visitare");
+        setSelectedPlaceId(null);
+      }}
+      className={`flex-1 pb-2.5 text-sm font-medium transition-all relative ${
+        travelSubTab === "da-visitare"
+          ? "text-[#d64b38] font-bold"
+          : "text-slate-400 hover:text-slate-600"
+      }`}
+    >
+      Da visitare
+      {travelSubTab === "da-visitare" && (
+        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#d64b38] rounded-full" />
+      )}
+    </button>
+    <button
+      onClick={() => {
+        setTravelSubTab("visitati");
+        setSelectedPlaceId(null);
+      }}
+      className={`flex-1 pb-2.5 text-sm font-medium transition-all relative ${
+        travelSubTab === "visitati"
+          ? "text-[#d64b38] font-bold"
+          : "text-slate-400 hover:text-slate-600"
+      }`}
+    >
+      Visitati
+      {travelSubTab === "visitati" && (
+        <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#d64b38] rounded-full" />
+      )}
+    </button>
+  </div>
+) : activeTab === "travel" ? (
+  <p className="text-xs text-slate-500 bg-sky-50/50 p-2 rounded-lg border border-sky-100 flex items-center gap-1.5 font-medium">
+    <Sparkles className="w-3.5 h-3.5 text-sky-500 fill-sky-200" />
+    Tutti i luoghi sono visibili sulla mappa
+  </p>
+) : (
+  <p className="text-xs text-slate-500 bg-orange-50/50 p-2 rounded-lg border border-orange-100 flex items-center gap-1.5 font-medium">
+    <Sparkles className="w-3.5 h-3.5 text-orange-500 fill-orange-200" />
+    Siti e link salvati divisi per categoria
+  </p>
+)}
         </div>
 
         <div className="flex-1 overflow-hidden relative flex flex-col bg-slate-50">
@@ -504,7 +510,7 @@ export default function App() {
                     onDeletePlace={handleDeletePlace}
                     selectedPlaceId={selectedPlaceId}
                     setSelectedPlaceId={setSelectedPlaceId}
-                    onMapClick={handleMapClickToAdd}
+                    
                   />
                 </div>
               ) : (
@@ -524,9 +530,9 @@ export default function App() {
                   ) : (
                     filteredPlaces.map((place) => (
                       <div
-                        key={place.id}
-                        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px]"
-                      >
+  key={place.id}
+  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px] shrink-0"
+>
                         <div className="w-1/3 min-w-[100px] h-full relative bg-slate-100 shrink-0">
                           <img
                             src={place.imageUrl}
@@ -618,9 +624,9 @@ export default function App() {
                   <div className="grid grid-cols-1 gap-4">
                     {filteredOtherLinks.map((item) => (
                       <div
-                        key={item.id}
-                        className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3 relative hover:shadow-md transition-all"
-                      >
+  key={item.id}
+  className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3 relative hover:shadow-md transition-all shrink-0"
+>
                         <div className="flex justify-between items-start gap-2">
                           <div className="flex flex-col min-w-0">
                             <h3 className="font-bold text-slate-800 text-sm truncate">{item.title}</h3>
@@ -686,20 +692,22 @@ export default function App() {
               </div>
             )}
 
-            <button
-              onClick={() => {
-                setClickedCoords(null);
-                if (activeTab === "travel") {
-                  setIsAddModalOpen(true);
-                } else {
-                  setIsOtherLinkModalOpen(true);
-                }
-              }}
-              className="absolute bottom-4 right-4 bg-[#d64b38] hover:bg-[#c0402e] active:scale-95 text-white p-3.5 rounded-full shadow-lg hover:shadow-xl transition-all hover:rotate-90 duration-300 z-30 cursor-pointer"
-              title={activeTab === "travel" ? "Aggiungi posto" : "Salva link"}
-            >
-              <Plus className="w-6 h-6 stroke-[3px]" />
-            </button>
+            {!(activeTab === "travel" && layoutMode === "map" && selectedPlaceId) && (
+  <button
+    onClick={() => {
+      setClickedCoords(null);
+      if (activeTab === "travel") {
+        setIsAddModalOpen(true);
+      } else {
+        setIsOtherLinkModalOpen(true);
+      }
+    }}
+    className="absolute bottom-4 right-4 bg-[#d64b38] hover:bg-[#c0402e] active:scale-95 text-white p-3.5 rounded-full shadow-lg hover:shadow-xl transition-all hover:rotate-90 duration-300 z-30 cursor-pointer"
+    title={activeTab === "travel" ? "Aggiungi posto" : "Salva link"}
+  >
+    <Plus className="w-6 h-6 stroke-[3px]" />
+  </button>
+)}
           </div>
         </div>
 
