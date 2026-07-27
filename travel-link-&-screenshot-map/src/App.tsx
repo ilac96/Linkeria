@@ -16,19 +16,18 @@ import {
   Sparkles,
   Calendar,
   X,
-  FileText
+  FileText,
+  Pencil
 } from "lucide-react";
 import { Place, GeneralLinkItem, MainCategory } from "./types";
 import MapComponent from "./components/MapComponent";
 import AddPlaceModal from "./components/AddPlaceModal";
 import AddOtherLinkModal from "./components/AddOtherLinkModal";
-
+import EditPlaceModal from "./components/EditPlaceModal";
 
 // ============================================================
 // FUNZIONI DI CONVERSIONE tra le righe della tabella "links" su Supabase
 // e i tipi usati internamente dall'app (Place, GeneralLinkItem).
-// Prima erano in un file separato (lib/supabaseMappers.ts), le ho
-// spostate qui dentro per evitare problemi di cartelle/import.
 // ============================================================
 
 interface LinksRow {
@@ -46,11 +45,15 @@ interface LinksRow {
 
 function rowToPlace(row: LinksRow): Place {
   const meta = row.metadata || {};
+  
+  const validSubcategories = ["food", "sight", "nature"];
+  const subcategory = meta.subcategory || (validSubcategories.includes(row.category) ? row.category : "sight");
+
   return {
     id: row.id,
     title: row.title,
-    description: meta.description || "",
-    category: (meta.subcategory as "food" | "sight" | "nature") || "sight",
+    description: meta.description || row.notes || "",
+    category: subcategory as "food" | "sight" | "nature",
     lat: typeof meta.lat === "number" ? meta.lat : 0,
     lng: typeof meta.lng === "number" ? meta.lng : 0,
     walkingDirections: meta.walkingDirections || "",
@@ -118,10 +121,13 @@ export default function App() {
   const [travelSubTab, setTravelSubTab] = useState<"da-visitare" | "visitati">("da-visitare");
   const [layoutMode, setLayoutMode] = useState<"list" | "map">("list");
 
-  // Dati caricati da Supabase (partono vuoti, si popolano dopo il fetch)
+  // Dati caricati da Supabase
   const [places, setPlaces] = useState<Place[]>([]);
   const [otherLinks, setOtherLinks] = useState<GeneralLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Modifica Luogo
+  const [editingPlace, setEditingPlace] = useState<Place | null>(null);
 
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,8 +140,6 @@ export default function App() {
   const [clickedCoords, setClickedCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   // ---------- CARICAMENTO DATI DA SUPABASE ----------
-  // Una sola tabella "links": leggiamo tutto e dividiamo lato client
-  // tra "travel" (-> places) e tutto il resto (-> otherLinks).
   useEffect(() => {
     const caricaDatiDaSupabase = async () => {
       try {
@@ -149,9 +153,15 @@ export default function App() {
         if (error) throw error;
 
         const rows = (data || []) as LinksRow[];
+        const travelCategories = ["travel", "food", "sight", "nature"];
 
-        const travelRows = rows.filter((r) => r.category === "travel");
-        const otherRows = rows.filter((r) => r.category !== "travel");
+        const travelRows = rows.filter(
+          (r) => travelCategories.includes(r.category) || r.metadata?.subcategory
+        );
+        
+        const otherRows = rows.filter(
+          (r) => !travelCategories.includes(r.category) && !r.metadata?.subcategory
+        );
 
         setPlaces(travelRows.map(rowToPlace));
         setOtherLinks(otherRows.map(rowToOtherLink));
@@ -172,6 +182,47 @@ export default function App() {
       </div>
     );
   }
+
+  // ---------- MODIFICA DI UN POSTO ESISTENTE ----------
+  const handleUpdatePlace = async (updatedPlace: Place) => {
+    try {
+      // 1. Aggiorna lo stato locale
+      setPlaces((prevPlaces) =>
+        prevPlaces.map((p) => (p.id === updatedPlace.id ? updatedPlace : p))
+      );
+
+      // 2. Prepara i dati per Supabase
+      const updatedMetadata = {
+        subcategory: updatedPlace.category,
+        description: updatedPlace.description,
+        lat: updatedPlace.lat,
+        lng: updatedPlace.lng,
+        walkingDirections: updatedPlace.walkingDirections,
+        mapUrl: updatedPlace.mapUrl,
+        favorite: updatedPlace.favorite,
+      };
+
+      // 3. Esegui la query su Supabase
+      const { error } = await supabase
+        .from("links")
+        .update({
+          title: updatedPlace.title,
+          image_url: updatedPlace.imageUrl || null,
+          metadata: updatedMetadata,
+        })
+        .eq("id", updatedPlace.id);
+
+      if (error) {
+        console.error("Errore durante l'aggiornamento su Supabase:", error);
+        alert("Errore durante il salvataggio delle modifiche.");
+        return;
+      }
+
+      setEditingPlace(null);
+    } catch (err) {
+      console.error("Errore imprevisto:", err);
+    }
+  };
 
   // ---------- AGGIUNTA DI UN NUOVO POSTO (VIAGGI) ----------
   const handleAddPlace = async (newPlace: Omit<Place, "id" | "createdAt" | "visited">) => {
@@ -198,7 +249,7 @@ export default function App() {
     }
   };
 
-  // ---------- AGGIUNTA DI UN NUOVO LINK (IDEE / LIBRI / FILM / RICETTE) ----------
+  // ---------- AGGIUNTA DI UN NUOVO LINK ----------
   const handleAddOtherLink = async (newItem: Omit<GeneralLinkItem, "id" | "createdAt">) => {
     try {
       const rowToInsert = otherLinkToInsertRow(newItem);
@@ -222,13 +273,12 @@ export default function App() {
     }
   };
 
-  // ---------- TOGGLE VISITATO ("Da visitare" <-> "Visitati") ----------
+  // ---------- TOGGLE VISITATO ----------
   const handleToggleVisited = async (id: string) => {
     const place = places.find((p) => p.id === id);
     if (!place) return;
     const nuovoStatus = place.visited ? "to_visit" : "visited";
 
-    // Aggiorniamo subito la UI (ottimistico), poi confermiamo su Supabase
     setPlaces(places.map((p) => (p.id === id ? { ...p, visited: !p.visited } : p)));
 
     const { error } = await supabase
@@ -267,7 +317,7 @@ export default function App() {
     }
   };
 
-  // ---------- ELIMINA POSTO (VIAGGI) ----------
+  // ---------- ELIMINA POSTO ----------
   const handleDeletePlace = async (id: string) => {
     setPlaces(places.filter((p) => p.id !== id));
     if (selectedPlaceId === id) setSelectedPlaceId(null);
@@ -286,12 +336,6 @@ export default function App() {
     if (error) {
       console.error("Errore eliminando il link:", error);
     }
-  };
-
-  // Click sulla mappa apre il modale per aggiungere un posto in quel punto
-  const handleMapClickToAdd = (lat: number, lng: number) => {
-    setClickedCoords({ lat, lng });
-    setIsAddModalOpen(true);
   };
 
   // ---------- FILTRI ----------
@@ -321,29 +365,16 @@ export default function App() {
   });
 
   return (
-    // Wrapper esterno: su mobile/tablet resta a colonna piena schermo,
-    // su desktop grande (xl+) diventa un "app shell" più largo e centrato
     <div className="min-h-screen bg-slate-50 flex flex-col xl:py-8 xl:px-4 items-center justify-start">
       <div className="w-full xl:max-w-6xl bg-white xl:rounded-[32px] xl:shadow-2xl overflow-hidden flex flex-col h-screen xl:h-[820px] relative border-0 xl:border border-slate-200">
 
-        <div className="hidden xl:hidden md:flex justify-center items-center h-6 bg-slate-900 text-[10px] text-slate-400 px-6 justify-between select-none shrink-0 z-40">
-          <span className="font-medium text-white/90">09:41</span>
-          <div className="w-16 h-4 bg-black rounded-full absolute top-1 left-1/2 -translate-x-1/2" />
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-            <span className="text-white/80 font-semibold uppercase tracking-wider text-[8px]">Live</span>
-          </div>
-        </div>
-
-        {/* NAV: barra in basso su mobile/tablet, "pillola" flottante centrata da xl in su */}
+        {/* BARRA DI NAVIGAZIONE */}
         <div className="bg-[#d64b38] py-3.5 px-4 flex justify-around items-center shrink-0 z-40 shadow-xl border-t border-orange-700/20 select-none
           xl:absolute xl:bottom-6 xl:left-1/2 xl:-translate-x-1/2 xl:w-auto xl:justify-center xl:gap-8 xl:py-3 xl:px-7 xl:rounded-full xl:shadow-[0_10px_40px_-5px_rgba(214,75,56,0.5)] xl:border-0">
           <button
             onClick={() => setActiveTab("travel")}
             className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "travel"
-                ? "text-white scale-110 font-bold"
-                : "text-orange-200 hover:text-white hover:scale-105"
+              activeTab === "travel" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
             }`}
           >
             <Plane className={`w-5.5 h-5.5 xl:w-6 xl:h-6 ${activeTab === "travel" ? "fill-white/10" : ""}`} />
@@ -353,9 +384,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("ideas")}
             className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "ideas"
-                ? "text-white scale-110 font-bold"
-                : "text-orange-200 hover:text-white hover:scale-105"
+              activeTab === "ideas" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
             }`}
           >
             <PenTool className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
@@ -365,9 +394,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("books")}
             className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "books"
-                ? "text-white scale-110 font-bold"
-                : "text-orange-200 hover:text-white hover:scale-105"
+              activeTab === "books" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
             }`}
           >
             <BookOpen className={`w-5.5 h-5.5 xl:w-6 xl:h-6 ${activeTab === "books" ? "fill-white/10" : ""}`} />
@@ -377,9 +404,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("movies")}
             className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "movies"
-                ? "text-white scale-110 font-bold"
-                : "text-orange-200 hover:text-white hover:scale-105"
+              activeTab === "movies" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
             }`}
           >
             <Film className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
@@ -389,9 +414,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("recipes")}
             className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "recipes"
-                ? "text-white scale-110 font-bold"
-                : "text-orange-200 hover:text-white hover:scale-105"
+              activeTab === "recipes" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
             }`}
           >
             <ChefHat className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
@@ -579,7 +602,6 @@ export default function App() {
                       onDeletePlace={handleDeletePlace}
                       selectedPlaceId={selectedPlaceId}
                       setSelectedPlaceId={setSelectedPlaceId}
-
                     />
                   </div>
                 ) : (
@@ -592,7 +614,7 @@ export default function App() {
                         <div className="flex flex-col gap-1 px-8">
                           <span className="font-semibold text-slate-800 text-sm">Nessuna tappa salvata</span>
                           <p className="text-xs text-slate-400">
-                            Carica uno screenshot di Instagram/TikTok o inserisci un link per mappare nuove mete!
+                            Carica uno screenshot o inserisci un link per mappare nuove mete!
                           </p>
                         </div>
                       </div>
@@ -647,7 +669,16 @@ export default function App() {
                                 </button>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
+                                {/* PULSANTE EDIT CON LA MATITA */}
+                                <button
+                                  onClick={() => setEditingPlace(place)}
+                                  className="text-slate-400 hover:text-orange-600 p-1 rounded-md transition-colors"
+                                  title="Modifica luogo"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+
                                 <button
                                   onClick={() => handleDeletePlace(place.id)}
                                   className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors"
@@ -761,6 +792,7 @@ export default function App() {
                 </div>
               )}
 
+              {/* PULSANTE FLOTTANTE NUOVO ELEMENTO */}
               {!(activeTab === "travel" && layoutMode === "map" && selectedPlaceId) && (
                 <button
                   onClick={() => {
@@ -782,6 +814,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* MODALE AGGIUNGI LUOGO */}
       <AddPlaceModal
         isOpen={isAddModalOpen}
         onClose={() => {
@@ -792,12 +825,23 @@ export default function App() {
         clickedCoords={clickedCoords}
       />
 
+      {/* MODALE AGGIUNGI ALTRO LINK */}
       <AddOtherLinkModal
         isOpen={isOtherLinkModalOpen}
         onClose={() => setIsOtherLinkModalOpen(false)}
         onAddItem={handleAddOtherLink}
         defaultCategory={activeTab}
       />
+
+      {/* MODALE MODIFICA LUOGO */}
+      {editingPlace && (
+        <EditPlaceModal
+          isOpen={!!editingPlace}
+          onClose={() => setEditingPlace(null)}
+          place={editingPlace}
+          onUpdatePlace={handleUpdatePlace}
+        />
+      )}
     </div>
   );
 }
