@@ -375,7 +375,7 @@ export default function App() {
             }`}
             title="Viaggi"
           >
-            <Plane className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <Plane className="w-6 h-6 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
@@ -387,7 +387,7 @@ export default function App() {
             }`}
             title="Idee"
           >
-            <PenTool className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <PenTool className="w-6 h-6 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
@@ -399,7 +399,7 @@ export default function App() {
             }`}
             title="Libri"
           >
-            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <BookOpen className="w-6 h-6 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
@@ -411,7 +411,7 @@ export default function App() {
             }`}
             title="Film & Video"
           >
-            <Film className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <Film className="w-6 h-6 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
@@ -423,7 +423,7 @@ export default function App() {
             }`}
             title="Ricette"
           >
-            <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+            <ChefHat className="w-6 h-6 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
         </div>
 
@@ -711,13 +711,14 @@ export default function App() {
                   )}
 
                   {/* 🔴 PULSANTE "+" PER AGGIUNGERE UN LUOGO (Visibile sia in Mappa che in Lista) */}
-                  <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="fixed bottom-6 right-6 z-40 bg-[#d64b38] hover:bg-[#c0402e] text-white p-4 rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center border border-white/20 cursor-pointer"
-                    title="Aggiungi Luogo"
-                  >
-                    <Plus className="w-6 h-6 stroke-[2.5]" />
-                  </button>
+                  {/* 🔴 PULSANTE "+" PER AGGIUNGERE UN LUOGO */}
+<button
+  onClick={() => setIsAddModalOpen(true)}
+  className="fixed bottom-24 right-5 sm:bottom-6 sm:right-6 z-40 bg-[#d64b38] hover:bg-[#c0402e] text-white p-3.5 sm:p-4 rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center border border-white/20 cursor-pointer"
+  title="Aggiungi Luogo"
+>
+  <Plus className="w-6 h-6 stroke-[2.5]" />
+</button>
                 </>
               )}
 
