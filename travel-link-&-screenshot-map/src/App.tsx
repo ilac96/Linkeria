@@ -14,7 +14,6 @@ import {
   ExternalLink,
   Trash2,
   Sparkles,
-  Calendar,
   X,
   FileText,
   Pencil
@@ -186,12 +185,10 @@ export default function App() {
   // ---------- MODIFICA DI UN POSTO ESISTENTE ----------
   const handleUpdatePlace = async (updatedPlace: Place) => {
     try {
-      // 1. Aggiorna lo stato locale
       setPlaces((prevPlaces) =>
         prevPlaces.map((p) => (p.id === updatedPlace.id ? updatedPlace : p))
       );
 
-      // 2. Prepara i dati per Supabase
       const updatedMetadata = {
         subcategory: updatedPlace.category,
         description: updatedPlace.description,
@@ -202,7 +199,6 @@ export default function App() {
         favorite: updatedPlace.favorite,
       };
 
-      // 3. Esegui la query su Supabase
       const { error } = await supabase
         .from("links")
         .update({
@@ -368,62 +364,71 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col xl:py-8 xl:px-4 items-center justify-start">
       <div className="w-full xl:max-w-6xl bg-white xl:rounded-[32px] xl:shadow-2xl overflow-hidden flex flex-col h-screen xl:h-[820px] relative border-0 xl:border border-slate-200">
 
-        {/* BARRA DI NAVIGAZIONE */}
-        <div className="bg-[#d64b38] py-3.5 px-4 flex justify-around items-center shrink-0 z-40 shadow-xl border-t border-orange-700/20 select-none
-          xl:absolute xl:bottom-6 xl:left-1/2 xl:-translate-x-1/2 xl:w-auto xl:justify-center xl:gap-8 xl:py-3 xl:px-7 xl:rounded-full xl:shadow-[0_10px_40px_-5px_rgba(214,75,56,0.5)] xl:border-0">
+        {/* BARRA DI NAVIGAZIONE FLUTTUANTE A PILLOLA */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-[#d64b38] py-2.5 px-6 rounded-full shadow-2xl border border-white/10 flex items-center justify-center gap-6 sm:gap-8 backdrop-blur-md select-none">
           <button
             onClick={() => setActiveTab("travel")}
-            className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "travel" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
+            className={`p-2 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              activeTab === "travel"
+                ? "bg-white/20 text-white scale-110"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             }`}
+            title="Viaggi"
           >
-            <Plane className={`w-5.5 h-5.5 xl:w-6 xl:h-6 ${activeTab === "travel" ? "fill-white/10" : ""}`} />
-            <span className="text-[9px] tracking-wide">Viaggi</span>
+            <Plane className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
             onClick={() => setActiveTab("ideas")}
-            className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "ideas" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
+            className={`p-2 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              activeTab === "ideas"
+                ? "bg-white/20 text-white scale-110"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             }`}
+            title="Idee"
           >
-            <PenTool className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
-            <span className="text-[9px] tracking-wide">Idee</span>
+            <PenTool className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
             onClick={() => setActiveTab("books")}
-            className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "books" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
+            className={`p-2 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              activeTab === "books"
+                ? "bg-white/20 text-white scale-110"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             }`}
+            title="Libri"
           >
-            <BookOpen className={`w-5.5 h-5.5 xl:w-6 xl:h-6 ${activeTab === "books" ? "fill-white/10" : ""}`} />
-            <span className="text-[9px] tracking-wide">Libri</span>
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
             onClick={() => setActiveTab("movies")}
-            className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "movies" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
+            className={`p-2 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              activeTab === "movies"
+                ? "bg-white/20 text-white scale-110"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             }`}
+            title="Film & Video"
           >
-            <Film className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
-            <span className="text-[9px] tracking-wide">Film & Video</span>
+            <Film className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
 
           <button
             onClick={() => setActiveTab("recipes")}
-            className={`flex flex-col items-center gap-1 transition-all ${
-              activeTab === "recipes" ? "text-white scale-110 font-bold" : "text-orange-200 hover:text-white hover:scale-105"
+            className={`p-2 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer ${
+              activeTab === "recipes"
+                ? "bg-white/20 text-white scale-110"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             }`}
+            title="Ricette"
           >
-            <ChefHat className="w-5.5 h-5.5 xl:w-6 xl:h-6" />
-            <span className="text-[9px] tracking-wide">Ricette</span>
+            <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
           </button>
         </div>
 
         {/* CONTENUTO PRINCIPALE */}
-        <div className="flex-1 flex flex-col min-w-0 h-full xl:pb-4">
+        <div className="flex-1 flex flex-col min-w-0 h-full">
 
           <div className="bg-white border-b border-slate-100 p-4 pt-5 md:pt-4 shrink-0 shadow-sm z-30">
             <div className="flex justify-between items-center mb-4">
@@ -593,121 +598,131 @@ export default function App() {
 
             <div className="flex-1 relative overflow-hidden">
               {activeTab === "travel" && (
-                layoutMode === "map" ? (
-                  <div className="w-full h-full">
-                    <MapComponent
-                      places={filteredPlaces}
-                      onToggleVisited={handleToggleVisited}
-                      onToggleFavorite={handleToggleFavorite}
-                      onDeletePlace={handleDeletePlace}
-                      selectedPlaceId={selectedPlaceId}
-                      setSelectedPlaceId={setSelectedPlaceId}
-                    />
-                  </div>
-                ) : (
-                  <div className="w-full h-full overflow-y-auto p-4 xl:pb-24 flex flex-col gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:items-start md:content-start">
-                    {filteredPlaces.length === 0 ? (
-                      <div className="md:col-span-2 xl:col-span-3 text-center py-16 flex flex-col items-center justify-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
-                          <MapIcon className="w-8 h-8" />
-                        </div>
-                        <div className="flex flex-col gap-1 px-8">
-                          <span className="font-semibold text-slate-800 text-sm">Nessuna tappa salvata</span>
-                          <p className="text-xs text-slate-400">
-                            Carica uno screenshot o inserisci un link per mappare nuove mete!
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      filteredPlaces.map((place) => (
-                        <div
-                          key={place.id}
-                          className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px] shrink-0"
-                        >
-                          <div className="w-1/3 min-w-[100px] h-full relative bg-slate-100 shrink-0">
-                            <img
-                              src={place.imageUrl}
-                              alt={place.title}
-                              className="w-full h-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                            <button
-                              onClick={() => handleToggleFavorite(place.id)}
-                              className="absolute top-2 left-2 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md text-red-500 hover:bg-white transition-all scale-95"
-                            >
-                              <Heart className={`w-3.5 h-3.5 ${place.favorite ? "fill-current" : ""}`} />
-                            </button>
+                <>
+                  {layoutMode === "map" ? (
+                    <div className="w-full h-full">
+                      <MapComponent
+                        places={filteredPlaces}
+                        onToggleVisited={handleToggleVisited}
+                        onToggleFavorite={handleToggleFavorite}
+                        onDeletePlace={handleDeletePlace}
+                        selectedPlaceId={selectedPlaceId}
+                        setSelectedPlaceId={setSelectedPlaceId}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full overflow-y-auto p-4 pb-28 flex flex-col gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:items-start md:content-start">
+                      {filteredPlaces.length === 0 ? (
+                        <div className="md:col-span-2 xl:col-span-3 text-center py-16 flex flex-col items-center justify-center gap-3">
+                          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+                            <MapIcon className="w-8 h-8" />
                           </div>
-
-                          <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex justify-between items-start gap-1">
-                                <h3 className="font-bold text-slate-800 text-sm truncate">{place.title}</h3>
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                                  place.category === "food" ? "bg-amber-100 text-amber-700" :
-                                  place.category === "sight" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
-                                }`}>
-                                  {place.category === "food" ? "Cibo" : place.category === "sight" ? "Attrazione" : "Natura"}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                                {place.description}
-                              </p>
-                            </div>
-
-                            <div className="flex justify-between items-center pt-1 border-t border-slate-50">
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  onClick={() => handleToggleVisited(place.id)}
-                                  className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-                                    place.visited
-                                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                                >
-                                  {place.visited ? "✓ Visitato" : "Visita"}
-                                </button>
-                              </div>
-
-                              <div className="flex items-center gap-1.5">
-                                {/* PULSANTE EDIT CON LA MATITA */}
-                                <button
-                                  onClick={() => setEditingPlace(place)}
-                                  className="text-slate-400 hover:text-orange-600 p-1 rounded-md transition-colors"
-                                  title="Modifica luogo"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeletePlace(place.id)}
-                                  className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors"
-                                  title="Elimina luogo"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setSelectedPlaceId(place.id);
-                                    setLayoutMode("map");
-                                  }}
-                                  className="bg-[#d64b38] hover:bg-[#c0402e] text-white text-[11px] font-bold px-3.5 py-1 rounded-lg transition-colors shadow-sm cursor-pointer"
-                                >
-                                  Dettaglio
-                                </button>
-                              </div>
-                            </div>
+                          <div className="flex flex-col gap-1 px-8">
+                            <span className="font-semibold text-slate-800 text-sm">Nessuna tappa salvata</span>
+                            <p className="text-xs text-slate-400">
+                              Carica uno screenshot o inserisci un link per mappare nuove mete!
+                            </p>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-                )
+                      ) : (
+                        filteredPlaces.map((place) => (
+                          <div
+                            key={place.id}
+                            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px] shrink-0"
+                          >
+                            <div className="w-1/3 min-w-[100px] h-full relative bg-slate-100 shrink-0">
+                              <img
+                                src={place.imageUrl}
+                                alt={place.title}
+                                className="w-full h-full object-cover"
+                                referrerPolicy="no-referrer"
+                              />
+                              <button
+                                onClick={() => handleToggleFavorite(place.id)}
+                                className="absolute top-2 left-2 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md text-red-500 hover:bg-white transition-all scale-95"
+                              >
+                                <Heart className={`w-3.5 h-3.5 ${place.favorite ? "fill-current" : ""}`} />
+                              </button>
+                            </div>
+
+                            <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex justify-between items-start gap-1">
+                                  <h3 className="font-bold text-slate-800 text-sm truncate">{place.title}</h3>
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                                    place.category === "food" ? "bg-amber-100 text-amber-700" :
+                                    place.category === "sight" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
+                                  }`}>
+                                    {place.category === "food" ? "Cibo" : place.category === "sight" ? "Attrazione" : "Natura"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                  {place.description}
+                                </p>
+                              </div>
+
+                              <div className="flex justify-between items-center pt-1 border-t border-slate-50">
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleToggleVisited(place.id)}
+                                    className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                                      place.visited
+                                        ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                                    }`}
+                                  >
+                                    {place.visited ? "✓ Visitato" : "Visita"}
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => setEditingPlace(place)}
+                                    className="text-slate-400 hover:text-orange-600 p-1 rounded-md transition-colors"
+                                    title="Modifica luogo"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeletePlace(place.id)}
+                                    className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors"
+                                    title="Elimina luogo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setSelectedPlaceId(place.id);
+                                      setLayoutMode("map");
+                                    }}
+                                    className="bg-[#d64b38] hover:bg-[#c0402e] text-white text-[11px] font-bold px-3.5 py-1 rounded-lg transition-colors shadow-sm cursor-pointer"
+                                  >
+                                    Dettaglio
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* 🔴 PULSANTE "+" PER AGGIUNGERE UN LUOGO (Visibile sia in Mappa che in Lista) */}
+                  <button
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="fixed bottom-6 right-6 z-40 bg-[#d64b38] hover:bg-[#c0402e] text-white p-4 rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center border border-white/20 cursor-pointer"
+                    title="Aggiungi Luogo"
+                  >
+                    <Plus className="w-6 h-6 stroke-[2.5]" />
+                  </button>
+                </>
               )}
 
               {activeTab !== "travel" && (
-                <div className="w-full h-full overflow-y-auto p-4 xl:pb-24 flex flex-col gap-4">
+                <div className="w-full h-full overflow-y-auto p-4 pb-28 flex flex-col gap-4">
                   {filteredOtherLinks.length === 0 ? (
                     <div className="text-center py-20 flex flex-col items-center justify-center gap-3">
                       <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
@@ -735,110 +750,65 @@ export default function App() {
                                   href={item.link}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-[10px] text-orange-500 hover:underline inline-flex items-center gap-1 mt-0.5 truncate"
+                                  className="text-[10px] text-orange-500 hover:underline inline-flex items-center gap-1 mt-0.5"
                                 >
-                                  <ExternalLink className="w-3 h-3" />
-                                  {(() => {
-                                    try {
-                                      return new URL(item.link).hostname;
-                                    } catch {
-                                      return item.link;
-                                    }
-                                  })()}
+                                  Apri link <ExternalLink className="w-2.5 h-2.5" />
                                 </a>
                               )}
                             </div>
-
                             <button
                               onClick={() => handleDeleteOtherLink(item.id)}
                               className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors shrink-0"
-                              title="Elimina"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
-
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                            {item.description}
-                          </p>
-
-                          {item.notes && (
-                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600">
-                              <span className="font-semibold text-[10px] text-slate-400 uppercase tracking-wider block mb-0.5">I miei appunti</span>
-                              {item.notes}
-                            </div>
+                          {item.description && (
+                            <p className="text-xs text-slate-600 leading-relaxed">{item.description}</p>
                           )}
-
-                          <div className="flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-50 pt-2.5 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(item.createdAt).toLocaleDateString("it-IT", { day: "numeric", month: "short" })}
-                            </span>
-                            {item.link && (
-                              <a
-                                href={item.link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-1 px-3 rounded-lg transition-colors cursor-pointer"
-                              >
-                                Apri Link
-                              </a>
-                            )}
-                          </div>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* PULSANTE FLOTTANTE NUOVO ELEMENTO */}
-              {!(activeTab === "travel" && layoutMode === "map" && selectedPlaceId) && (
-                <button
-                  onClick={() => {
-                    setClickedCoords(null);
-                    if (activeTab === "travel") {
-                      setIsAddModalOpen(true);
-                    } else {
-                      setIsOtherLinkModalOpen(true);
-                    }
-                  }}
-                  className="absolute bottom-4 right-4 bg-[#d64b38] hover:bg-[#c0402e] active:scale-95 text-white p-3.5 rounded-full shadow-lg hover:shadow-xl transition-all hover:rotate-90 duration-300 z-30 cursor-pointer"
-                  title={activeTab === "travel" ? "Aggiungi posto" : "Salva link"}
-                >
-                  <Plus className="w-6 h-6 stroke-[3px]" />
-                </button>
+                  {/* Pulsante aggiungi per altre categorie */}
+                  <button
+                    onClick={() => setIsOtherLinkModalOpen(true)}
+                    className="fixed bottom-6 right-6 z-40 bg-[#d64b38] hover:bg-[#c0402e] text-white p-4 rounded-full shadow-2xl transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center border border-white/20 cursor-pointer"
+                    title="Aggiungi Link"
+                  >
+                    <Plus className="w-6 h-6 stroke-[2.5]" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* MODALE AGGIUNGI LUOGO */}
-      <AddPlaceModal
-        isOpen={isAddModalOpen}
-        onClose={() => {
-          setIsAddModalOpen(false);
-          setClickedCoords(null);
-        }}
-        onAddPlace={handleAddPlace}
-        clickedCoords={clickedCoords}
-      />
+      {/* MODALI */}
+      {isAddModalOpen && (
+        <AddPlaceModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onAddPlace={handleAddPlace}
+        />
+      )}
 
-      {/* MODALE AGGIUNGI ALTRO LINK */}
-      <AddOtherLinkModal
-        isOpen={isOtherLinkModalOpen}
-        onClose={() => setIsOtherLinkModalOpen(false)}
-        onAddItem={handleAddOtherLink}
-        defaultCategory={activeTab}
-      />
+      {isOtherLinkModalOpen && (
+        <AddOtherLinkModal
+          isOpen={isOtherLinkModalOpen}
+          onClose={() => setIsOtherLinkModalOpen(false)}
+          onAddItem={handleAddOtherLink}
+          defaultCategory={activeTab !== "travel" ? activeTab : "ideas"}
+        />
+      )}
 
-      {/* MODALE MODIFICA LUOGO */}
       {editingPlace && (
         <EditPlaceModal
           isOpen={!!editingPlace}
-          onClose={() => setEditingPlace(null)}
           place={editingPlace}
+          onClose={() => setEditingPlace(null)}
           onUpdatePlace={handleUpdatePlace}
         />
       )}
