@@ -16,18 +16,32 @@ import {
   Sparkles,
   X,
   FileText,
-  Pencil
+  Pencil,
+  Utensils,   // ⬅️ nuovo
+  Camera,     // ⬅️ nuovo
+  Trees,      // ⬅️ nuovo
+  ChevronRight
 } from "lucide-react";
 import { Place, GeneralLinkItem, MainCategory } from "./types";
 import MapComponent from "./components/MapComponent";
 import AddPlaceModal from "./components/AddPlaceModal";
 import AddOtherLinkModal from "./components/AddOtherLinkModal";
 import EditPlaceModal from "./components/EditPlaceModal";
+import foodIllustration from "./components/illustrations/food.svg";
+import naturaIllustration from "./components/illustrations/natura.svg";
+import photoIllustration from "./components/illustrations/photo.svg";
 
-// ============================================================
-// FUNZIONI DI CONVERSIONE tra le righe della tabella "links" su Supabase
-// e i tipi usati internamente dall'app (Place, GeneralLinkItem).
-// ============================================================
+const categoryConfig = {
+  nature: { borderColor: "border-l-emerald-500", illustration: naturaIllustration },
+  food:   { borderColor: "border-l-amber-400",   illustration: foodIllustration },
+  sight:  { borderColor: "border-l-sky-500",     illustration: photoIllustration },
+}
+
+const CATEGORY = {
+  food:   { Icon: Utensils, label: "Cibo",       bg: "bg-amber-50",   text: "text-amber-700",  bar: "bg-amber-400" },
+  sight:  { Icon: Camera,   label: "Attrazione", bg: "bg-sky-50",     text: "text-sky-700",    bar: "bg-sky-400" },
+  nature: { Icon: Trees,    label: "Natura",     bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-400" },
+};
 
 interface LinksRow {
   id: string;
@@ -48,9 +62,15 @@ function rowToPlace(row: LinksRow): Place {
   const validSubcategories = ["food", "sight", "nature"];
   const subcategory = meta.subcategory || (validSubcategories.includes(row.category) ? row.category : "sight");
 
+  // 1. Pulizia immagini base64 troppo pesanti (> 50KB)
+  let validImageUrl = row.image_url || meta.imageUrl || "";
+  if (validImageUrl.startsWith("data:image/") && validImageUrl.length > 50000) {
+    validImageUrl = ""; // Resetta l'immagine se è una stringa base64 gigante che blocca Supabase
+  }
+
   return {
     id: row.id,
-    title: row.title,
+    title: row.title || "Senza Titolo",
     description: meta.description || row.notes || "",
     category: subcategory as "food" | "sight" | "nature",
     lat: typeof meta.lat === "number" ? meta.lat : 0,
@@ -58,19 +78,24 @@ function rowToPlace(row: LinksRow): Place {
     walkingDirections: meta.walkingDirections || "",
     mapUrl: row.original_url || meta.mapUrl || "",
     visited: row.status === "visited",
-    imageUrl: row.image_url || "",
+    imageUrl: validImageUrl,
     createdAt: row.created_at,
     favorite: !!meta.favorite,
   };
 }
 
 function placeToInsertRow(place: Omit<Place, "id" | "createdAt" | "visited">) {
+  let cleanImageUrl = place.imageUrl || null;
+  if (cleanImageUrl && cleanImageUrl.startsWith("data:image/") && cleanImageUrl.length > 50000) {
+    cleanImageUrl = null;
+  }
+
   return {
     category: "travel",
     source_type: "manual",
     title: place.title,
     original_url: place.mapUrl || null,
-    image_url: place.imageUrl || null,
+    image_url: cleanImageUrl,
     notes: null,
     status: "to_visit",
     metadata: {
@@ -601,14 +626,16 @@ export default function App() {
                 <>
                   {layoutMode === "map" ? (
                     <div className="w-full h-full">
-                      <MapComponent
-                        places={filteredPlaces}
-                        onToggleVisited={handleToggleVisited}
-                        onToggleFavorite={handleToggleFavorite}
-                        onDeletePlace={handleDeletePlace}
-                        selectedPlaceId={selectedPlaceId}
-                        setSelectedPlaceId={setSelectedPlaceId}
-                      />
+                     <MapComponent
+  places={filteredPlaces}
+  onToggleVisited={handleToggleVisited}
+  onToggleFavorite={handleToggleFavorite}
+  onDeletePlace={handleDeletePlace}
+  // ⬅️ nuovo
+  onEditPlace={setEditingPlace}
+  selectedPlaceId={selectedPlaceId}
+  setSelectedPlaceId={setSelectedPlaceId}
+/>
                     </div>
                   ) : (
                     <div className="w-full h-full overflow-y-auto p-4 pb-28 flex flex-col gap-4 md:grid md:grid-cols-2 xl:grid-cols-3 md:items-start md:content-start">
@@ -625,87 +652,46 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        filteredPlaces.map((place) => (
-                          <div
-                            key={place.id}
-                            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex hover:shadow-md transition-all h-[130px] shrink-0"
-                          >
-                            <div className="w-1/3 min-w-[100px] h-full relative bg-slate-100 shrink-0">
-                              <img
-                                src={place.imageUrl}
-                                alt={place.title}
-                                className="w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                              <button
-                                onClick={() => handleToggleFavorite(place.id)}
-                                className="absolute top-2 left-2 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-md text-red-500 hover:bg-white transition-all scale-95"
-                              >
-                                <Heart className={`w-3.5 h-3.5 ${place.favorite ? "fill-current" : ""}`} />
-                              </button>
-                            </div>
+                        filteredPlaces.map((place) => {
+  // Configurazione stili e icone in base alla categoria
+  // Configurazione stili e illustrazioni in base alla categoria
+  const categoryConfig = {
+    nature: { borderColor: "border-l-emerald-500", illustration: naturaIllustration },
+    food:   { borderColor: "border-l-amber-400",   illustration: foodIllustration },
+    sight:  { borderColor: "border-l-sky-500",     illustration: photoIllustration },
+  }[place.category] || { borderColor: "border-l-slate-400", illustration: photoIllustration };
+  return (
+    <div
+      key={place.id}
+      onClick={() => {
+        setSelectedPlaceId(place.id);
+        setLayoutMode("map");
+      }}
+      className={`bg-white rounded-2xl border border-slate-100/80 border-l-[6px] ${categoryConfig.borderColor} shadow-sm hover:shadow-md transition-all flex items-center justify-between p-4 gap-3 shrink-0 cursor-pointer group`}
+    >
+      {/* Icona Illustrativa del posto */}
+      <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 border border-slate-100 p-2">
+  <img src={categoryConfig.illustration} alt="" className="w-full h-full object-contain" />
+</div>
+    
 
-                            <div className="p-3 flex-1 flex flex-col justify-between min-w-0">
-                              <div className="flex flex-col gap-0.5">
-                                <div className="flex justify-between items-start gap-1">
-                                  <h3 className="font-bold text-slate-800 text-sm truncate">{place.title}</h3>
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                                    place.category === "food" ? "bg-amber-100 text-amber-700" :
-                                    place.category === "sight" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
-                                  }`}>
-                                    {place.category === "food" ? "Cibo" : place.category === "sight" ? "Attrazione" : "Natura"}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                                  {place.description}
-                                </p>
-                              </div>
+      {/* Titolo e Descrizione */}
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <h3 className="font-bold text-slate-800 text-sm truncate">
+          {place.title}
+        </h3>
+        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+          {place.description || "Nessuna descrizione."}
+        </p>
+      </div>
 
-                              <div className="flex justify-between items-center pt-1 border-t border-slate-50">
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleToggleVisited(place.id)}
-                                    className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-                                      place.visited
-                                        ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                                    }`}
-                                  >
-                                    {place.visited ? "✓ Visitato" : "Visita"}
-                                  </button>
-                                </div>
-
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => setEditingPlace(place)}
-                                    className="text-slate-400 hover:text-orange-600 p-1 rounded-md transition-colors"
-                                    title="Modifica luogo"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleDeletePlace(place.id)}
-                                    className="text-slate-300 hover:text-red-500 p-1 rounded-md transition-colors"
-                                    title="Elimina luogo"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setSelectedPlaceId(place.id);
-                                      setLayoutMode("map");
-                                    }}
-                                    className="bg-[#d64b38] hover:bg-[#c0402e] text-white text-[11px] font-bold px-3.5 py-1 rounded-lg transition-colors shadow-sm cursor-pointer"
-                                  >
-                                    Dettaglio
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))
+      {/* Striscia di destra con la Freccia */}
+      <div className="w-10 h-10 rounded-xl bg-[#F4ECE9] group-hover:bg-[#d64b38] group-hover:text-white text-[#d64b38] transition-all flex items-center justify-center shrink-0">
+        <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+      </div>
+    </div>
+  );
+})
                       )}
                     </div>
                   )}
