@@ -173,22 +173,16 @@ map.on("click", (e: L.LeafletMouseEvent) => {
     <div className="p-4 flex flex-col gap-2">
       {/* Category + Stato riga in alto */}
       <div className="flex justify-between items-center gap-2 pr-9">
-        <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm text-white ${
-          activePlace.category === "food" ? "bg-amber-400" :
-          activePlace.category === "sight" ? "bg-sky-400" : "bg-emerald-400"
-        }`}>
-          <img
-            src={
-              activePlace.category === "food" ? foodIllustration :
-              activePlace.category === "sight" ? photoIllustration : naturaIllustration
-            }
-            alt=""
-            className="w-3.5 h-3.5 object-contain brightness-0 invert"
-          />
-          {activePlace.category === "food" ? "Cibo / Ristorante" :
-           activePlace.category === "sight" ? "Attrazione / Vista" : "Parco / Natura"}
-        </span>
-
+      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm text-white ${
+  activePlace.category === "food" ? "bg-amber-400" :
+  activePlace.category === "sight" ? "bg-sky-400" : "bg-emerald-400"
+}`}>
+  {activePlace.category === "food" ? "Cibo / Ristorante" :
+   activePlace.category === "sight" ? "Attrazione / Vista" : "Parco / Natura"}
+</span>
+          
+        
+        
         <button
           onClick={() => onToggleVisited(activePlace.id)}
           className={`text-xs font-medium px-3 py-1.5 rounded-full shadow-sm transition-all shrink-0 ${
@@ -211,16 +205,6 @@ map.on("click", (e: L.LeafletMouseEvent) => {
       <p className="text-sm text-slate-600 leading-relaxed">
         {activePlace.description}
       </p>
-
-      {activePlace.walkingDirections && (
-        <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex gap-2 items-start mt-1">
-          <Navigation className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Come arrivare</span>
-            <span className="text-xs text-slate-700">{activePlace.walkingDirections}</span>
-          </div>
-        </div>
-      )}
 
       {/* Footer: link mappa a sinistra, Heart + Pencil + Trash2 a destra */}
       <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
@@ -248,12 +232,15 @@ map.on("click", (e: L.LeafletMouseEvent) => {
           </button>
 
           <button
-            onClick={() => onEditPlace(activePlace)}
-            className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all"
-            title="Modifica luogo"
-          >
-            <Pencil className="w-4 h-4" />
-          </button>
+  onClick={() => {
+    onEditPlace(activePlace);
+    setSelectedPlaceId(null);
+  }}
+  className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all"
+  title="Modifica luogo"
+>
+  <Pencil className="w-4 h-4" />
+</button>
 
           <button
             onClick={() => {
