@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { Heart, X, Navigation, ExternalLink } from "lucide-react";
 import { Place } from "../types";
+import { Heart, X, Navigation, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import foodIllustration from "./illustrations/food.svg";
+import naturaIllustration from "./illustrations/natura.svg";
+import photoIllustration from "./illustrations/photo.svg";
 
 interface MapComponentProps {
   places: Place[];
   onToggleVisited: (id: string) => void;
   onToggleFavorite: (id: string) => void;
   onDeletePlace: (id: string) => void;
+  onEditPlace: (place: Place) => void;   // ⬅️ aggiungi questa riga
   selectedPlaceId: string | null;
   setSelectedPlaceId: (id: string | null) => void;
 }
@@ -17,6 +21,7 @@ export default function MapComponent({
   onToggleVisited,
   onToggleFavorite,
   onDeletePlace,
+  onEditPlace,   // ⬅️ aggiungi questa riga
   selectedPlaceId,
   setSelectedPlaceId,
 }: MapComponentProps) {
@@ -152,102 +157,119 @@ map.on("click", (e: L.LeafletMouseEvent) => {
       {/* Map Element */}
       <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-      {/* Detail Overlay Card - Screenshot 3 exact reproduction */}
-      {activePlace && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-20 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          {/* Main Visual Image */}
-          <div className="relative h-44 w-full bg-slate-100">
-            <img
-              src={activePlace.imageUrl}
-              alt={activePlace.title}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            {/* Category Tag overlay */}
-            <span className={`absolute top-3 left-3 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm text-white ${
-              activePlace.category === "food" ? "bg-amber-400" :
-              activePlace.category === "sight" ? "bg-sky-400" : "bg-emerald-400"
-            }`}>
-              {activePlace.category === "food" ? "🍕 Cibo / Ristorante" :
-               activePlace.category === "sight" ? "📸 Attrazione / Vista" : "🌳 Parco / Natura"}
-            </span>
+     {/* Detail Overlay Card */}
+{activePlace && (
+  <div className="absolute bottom-28 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-[60] animate-in fade-in slide-in-from-bottom-4 duration-300">
 
-            {/* Visit Status Toggle button inside image */}
-            <button
-              onClick={() => onToggleVisited(activePlace.id)}
-              className={`absolute top-3 right-3 text-xs font-medium px-3 py-1.5 rounded-full shadow-md transition-all ${
-                activePlace.visited
-                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                  : "bg-white/90 backdrop-blur-sm text-slate-700 hover:bg-white"
-              }`}
-            >
-              {activePlace.visited ? "✓ Visitato" : "Da visitare"}
-            </button>
-          </div>
+    {/* Close Button — in overlay, sopra tutto il resto della card */}
+    <button
+      onClick={() => setSelectedPlaceId(null)}
+      className="absolute top-3 right-3 z-10 p-2 rounded-full border border-slate-200 bg-white/90 backdrop-blur-sm text-slate-500 hover:bg-white transition-all shadow-sm"
+      title="Chiudi dettagli"
+    >
+      <X className="w-4 h-4" />
+    </button>
 
-          {/* Content info */}
-          <div className="p-4 flex flex-col gap-2">
-            <div className="flex justify-between items-start">
-              <h3 className="text-lg font-bold text-slate-800">{activePlace.title}</h3>
-              <span className="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 bg-slate-50 rounded">
-                {activePlace.lat.toFixed(4)}, {activePlace.lng.toFixed(4)}
-              </span>
-            </div>
+    <div className="p-4 flex flex-col gap-2">
+      {/* Category + Stato riga in alto */}
+      <div className="flex justify-between items-center gap-2 pr-9">
+        <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm text-white ${
+          activePlace.category === "food" ? "bg-amber-400" :
+          activePlace.category === "sight" ? "bg-sky-400" : "bg-emerald-400"
+        }`}>
+          <img
+            src={
+              activePlace.category === "food" ? foodIllustration :
+              activePlace.category === "sight" ? photoIllustration : naturaIllustration
+            }
+            alt=""
+            className="w-3.5 h-3.5 object-contain brightness-0 invert"
+          />
+          {activePlace.category === "food" ? "Cibo / Ristorante" :
+           activePlace.category === "sight" ? "Attrazione / Vista" : "Parco / Natura"}
+        </span>
 
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {activePlace.description}
-            </p>
+        <button
+          onClick={() => onToggleVisited(activePlace.id)}
+          className={`text-xs font-medium px-3 py-1.5 rounded-full shadow-sm transition-all shrink-0 ${
+            activePlace.visited
+              ? "bg-emerald-500 text-white hover:bg-emerald-600"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+          }`}
+        >
+          {activePlace.visited ? "✓ Visitato" : "Da visitare"}
+        </button>
+      </div>
 
-            {/* Walking Directions inside detail box */}
-            {activePlace.walkingDirections && (
-              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex gap-2 items-start mt-1">
-                <Navigation className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Come arrivare</span>
-                  <span className="text-xs text-slate-700">{activePlace.walkingDirections}</span>
-                </div>
-              </div>
-            )}
+      <div className="flex justify-between items-start mt-1">
+        <h3 className="text-lg font-bold text-slate-800">{activePlace.title}</h3>
+        <span className="text-[10px] font-mono text-slate-400 px-1.5 py-0.5 bg-slate-50 rounded shrink-0 ml-2">
+          {activePlace.lat.toFixed(4)}, {activePlace.lng.toFixed(4)}
+        </span>
+      </div>
 
-            {/* Action buttons matching screenshot */}
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-              <a
-                href={activePlace.mapUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs font-medium text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1 underline decoration-orange-300"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Link a Mappa
-              </a>
+      <p className="text-sm text-slate-600 leading-relaxed">
+        {activePlace.description}
+      </p>
 
-              <div className="flex items-center gap-2">
-                {/* Heart Toggle */}
-                <button
-                  onClick={() => onToggleFavorite(activePlace.id)}
-                  className={`p-2 rounded-full border transition-all ${
-                    activePlace.favorite
-                      ? "bg-red-50 text-red-500 border-red-200"
-                      : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
-                  }`}
-                  title="Aggiungi ai preferiti"
-                >
-                  <Heart className={`w-4 h-4 ${activePlace.favorite ? "fill-current" : ""}`} />
-                </button>
-
-                {/* Close Button */}
-                <button
-                  onClick={() => setSelectedPlaceId(null)}
-                  className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all"
-                  title="Chiudi dettagli"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+      {activePlace.walkingDirections && (
+        <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex gap-2 items-start mt-1">
+          <Navigation className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Come arrivare</span>
+            <span className="text-xs text-slate-700">{activePlace.walkingDirections}</span>
           </div>
         </div>
       )}
+
+      {/* Footer: link mappa a sinistra, Heart + Pencil + Trash2 a destra */}
+      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
+        <a
+          href={activePlace.mapUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium text-orange-500 hover:text-orange-600 transition-colors flex items-center gap-1 underline decoration-orange-300"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Link a Mappa
+        </a>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onToggleFavorite(activePlace.id)}
+            className={`p-2 rounded-full border transition-all ${
+              activePlace.favorite
+                ? "bg-red-50 text-red-500 border-red-200"
+                : "bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100"
+            }`}
+            title="Aggiungi ai preferiti"
+          >
+            <Heart className={`w-4 h-4 ${activePlace.favorite ? "fill-current" : ""}`} />
+          </button>
+
+          <button
+            onClick={() => onEditPlace(activePlace)}
+            className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all"
+            title="Modifica luogo"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => {
+              onDeletePlace(activePlace.id);
+              setSelectedPlaceId(null);
+            }}
+            className="p-2 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all"
+            title="Elimina luogo"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
