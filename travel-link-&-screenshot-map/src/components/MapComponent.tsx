@@ -141,7 +141,6 @@ map.on("click", (e: L.LeafletMouseEvent) => {
   // Center map on selected place
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedPlaceId) return;
 
     const place = places.find((p) => p.id === selectedPlaceId);
     if (place) {
