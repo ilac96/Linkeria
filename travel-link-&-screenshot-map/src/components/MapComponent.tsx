@@ -28,6 +28,8 @@ export default function MapComponent({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
+const isFirstLoadRef = useRef(true);
+const prevPlaceCountRef = useRef(places.length);
   
   // Track selected place in map state
   const activePlace = places.find((p) => p.id === selectedPlaceId) || null;
@@ -131,11 +133,14 @@ map.on("click", (e: L.LeafletMouseEvent) => {
       markersRef.current[place.id] = marker;
     });
 
-    // Fit bounds if we have markers and no selected place
-    if (places.length > 0 && !selectedPlaceId) {
+    // Fit bounds SOLO al primo caricamento o se cambia il numero di luoghi
+    const countChanged = places.length !== prevPlaceCountRef.current;
+    if (places.length > 0 && (isFirstLoadRef.current || countChanged)) {
       const group = L.featureGroup(Object.values(markersRef.current));
       map.fitBounds(group.getBounds().pad(0.15));
+      isFirstLoadRef.current = false;
     }
+    prevPlaceCountRef.current = places.length;
   }, [places]);
 
   // Center map on selected place
