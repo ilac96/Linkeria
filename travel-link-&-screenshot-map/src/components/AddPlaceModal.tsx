@@ -112,55 +112,79 @@ const [isResolvingLocation, setIsResolvingLocation] = useState(false);
     setLoadingMessage("L'AI sta analizzando il tuo elemento...");
 
     try {
-      const payload = {
-        link: cleanLink || null,
-        base64Image: selectedImage || null,
-      };
+      let aiData: any = null;
 
-      const { data: aiResult, error: fnError } = await supabase.functions.invoke("analyze-place", {
-        body: payload,
-      });
-
-      if (fnError) {
-        let realMessage = fnError.message;
-        try {
-          const errBody = await fnError.context.json();
-          if (errBody?.error) realMessage = errBody.error;
-        } catch (_) {}
-        throw new Error(realMessage);
+      // Try local Express /api/analyze-place backend with Gemini API
+      try {
+        const resp = await fetch("/api/analyze-place", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            link: cleanLink || null,
+            screenshot: selectedImage || null,
+          }),
+        });
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json?.data) {
+            aiData = json.data;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not reach /api/analyze-place, attempting Supabase function fallback:", e);
       }
 
-      if (aiResult?.error) throw new Error(aiResult.error);
+      // Fallback to Supabase edge function if local server endpoint was not available
+      if (!aiData) {
+        const payload = {
+          link: cleanLink || null,
+          base64Image: selectedImage || null,
+        };
 
-      // 1. Priorità: coordinate già geocodate dalla edge function (server-side, più affidabile)
-// 1. Priorità: coordinate già geocodate dalla edge function (server-side, più affidabile)
-let coords: { lat: number; lng: number } | null = null;
+        const { data: aiResult, error: fnError } = await supabase.functions.invoke("analyze-place", {
+          body: payload,
+        });
 
-if (
-  typeof aiResult.latitude === "number" &&
-  typeof aiResult.longitude === "number"
-) {
-  coords = { lat: aiResult.latitude, lng: aiResult.longitude };
-}
+        if (fnError) {
+          let realMessage = fnError.message;
+          try {
+            const errBody = await fnError.context.json();
+            if (errBody?.error) realMessage = errBody.error;
+          } catch (_) {}
+          throw new Error(realMessage);
+        }
 
-// 2. Fallback: geocoding client-side, solo se il server non ha trovato nulla
-if (!coords && aiResult.searchQuery) {
-  coords = await geocodeAddress(aiResult.searchQuery || aiResult.title);
-}
+        if (aiResult?.error) throw new Error(aiResult.error);
+        aiData = aiResult;
+      }
 
-const coordsAreFallback = !coords;
+      // 1. Priorità: coordinate restituite dall'analisi AI
+      let coords: { lat: number; lng: number } | null = null;
 
-setExtractedData({
-  title: aiResult.title || "Nuovo Luogo",
-  description: aiResult.description || "Aggiunto automaticamente dall'AI.",
-  category: aiResult.category || "sight",
-  lat: coords ? coords.lat : 41.8902,
-  lng: coords ? coords.lng : 12.4922,
-  coordsAreFallback,
-  walkingDirections: "Raggiungibile a piedi o con i mezzi.",
-  mapUrl: cleanLink || (coords ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}` : ""),
-  imageUrl: selectedImage || aiResult.wikiImageUrl || null,
-});
+      if (typeof aiData.lat === "number" && typeof aiData.lng === "number" && aiData.lat !== 0 && aiData.lng !== 0) {
+        coords = { lat: aiData.lat, lng: aiData.lng };
+      } else if (typeof aiData.latitude === "number" && typeof aiData.longitude === "number") {
+        coords = { lat: aiData.latitude, lng: aiData.longitude };
+      }
+
+      // 2. Fallback: geocoding client-side
+      if (!coords && (aiData.searchQuery || aiData.title)) {
+        coords = await geocodeAddress(aiData.searchQuery || aiData.title);
+      }
+
+      const coordsAreFallback = !coords;
+
+      setExtractedData({
+        title: aiData.title || "Nuovo Luogo",
+        description: aiData.description || "Aggiunto automaticamente dall'AI.",
+        category: aiData.category || "sight",
+        lat: coords ? coords.lat : (clickedCoords?.lat || 41.8902),
+        lng: coords ? coords.lng : (clickedCoords?.lng || 12.4922),
+        coordsAreFallback,
+        walkingDirections: aiData.walkingDirections || "Raggiungibile a piedi o con i mezzi.",
+        mapUrl: aiData.mapUrl || cleanLink || (coords ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}` : ""),
+        imageUrl: selectedImage || aiData.imageUrl || aiData.wikiImageUrl || null,
+      });
 
     } catch (err: any) {
       console.error(err);
