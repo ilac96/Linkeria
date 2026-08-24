@@ -41,7 +41,6 @@ app.post("/api/analyze-place", async (req, res) => {
     const ai = getAiClient();
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // Check if key exists and is real; if not, return a mocked beautiful response based on Rome
     if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
       return res.json({
         success: true,
@@ -51,43 +50,43 @@ app.post("/api/analyze-place", async (req, res) => {
     }
 
     let contents: any[] = [];
-    let promptText = "You are an expert travel assistant. Analyze the provided post link or screenshot of a travel spot, and extract the details in Italian.";
+    let promptText = "Analizza il link o lo screenshot fornito per identificare il luogo, monumento o locale.";
 
     if (link) {
-      promptText += `\nPost Link: ${link}`;
+      promptText += `\nLink / Testo del post: ${link}`;
     }
 
     contents.push({ text: promptText });
 
     if (screenshot) {
-      // screenshot is a base64 data URL (e.g., "data:image/png;base64,...")
       const matches = screenshot.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
       if (matches && matches.length === 3) {
-        const mimeType = matches[1];
-        const base64Data = matches[2];
         contents.push({
           inlineData: {
-            mimeType: mimeType,
-            data: base64Data
+            mimeType: matches[1],
+            data: matches[2]
           }
         });
       }
     }
 
-    // Call Gemini 3.5 Flash for multimodal analysis
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: { parts: contents },
       config: {
-        systemInstruction: `Analyze the user's travel screenshot or link. Find the specific tourist spot, monument, restaurant, or park. 
-Respond in Italian. Return a structured JSON response containing:
-1. title: Name of the spot.
-2. description: A beautifully summarized 1-2 line description in Italian (e.g. "Un affascinante vicolo storico nel cuore di Trastevere, adornato di edera verde e lampioni d'epoca").
-3. category: Strictly one of: "food", "sight", "nature".
-4. lat: The approximate latitude of the place. If it's a famous spot in Rome, provide Rome coordinates (e.g. Rome is near 41.8902, 12.4922). Default to a Rome coordinate if the city is not identifiable.
-5. lng: The approximate longitude of the place.
-6. walkingDirections: A short guide in Italian on how to get there on foot or by public transit (e.g. "Prendi la metro B fino a Colosseo, poi cammina per 5 minuti").
-7. mapUrl: A search link on Google Maps (e.g. "https://www.google.com/maps/search/?api=1&query=Colosseo+Roma").`,
+        systemInstruction: `Sei una guida turistica ed esperto OCR. 
+Analizza lo screenshot o il link dell'utente ed esegui l'OCR del testo visibile per identificare esattamente il luogo, monumento, ristorante o parco descritto.
+NON inventare posti se non trovi riscontro visivo o testuale.
+
+Rispondi in italiano in formato JSON:
+1. title: Nome esatto del luogo.
+2. description: Una breve sintesi di 1-2 righe in italiano.
+3. category: Strictly uno tra: "food", "sight", "nature".
+4. lat: Latitudine approssimativa del luogo.
+5. lng: Longitudine approssimativa del luogo.
+6. walkingDirections: Una breve indicazione in italiano su come arrivarci a piedi o con i mezzi.
+7. mapUrl: Un link di ricerca su Google Maps (es. "https://www.google.com/maps/search/?api=1&query=Nome+Luogo").`,
+        temperature: 0.1,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -114,8 +113,7 @@ Respond in Italian. Return a structured JSON response containing:
     return res.json({ success: true, source: "gemini", data });
 
   } catch (error: any) {
-    console.error("Gemini analysis error:", error);
-    // Graceful fallback to rich mock data so the app never crashes
+    console.error("Gemini place analysis error:", error);
     return res.json({
       success: true,
       source: "fallback",
@@ -125,7 +123,7 @@ Respond in Italian. Return a structured JSON response containing:
   }
 });
 
-// A utility function to return rich mock data when Gemini is unavailable or not configured
+// Utility function for mock place data
 function getMockPlace(link?: string, requestedCategory?: string) {
   const list = [
     {
@@ -154,59 +152,133 @@ function getMockPlace(link?: string, requestedCategory?: string) {
       lng: 12.4797,
       walkingDirections: "Prendi la Metro B fino a Circo Massimo, poi sali a piedi lungo Clivo dei Publicii per 10 minuti.",
       mapUrl: "https://www.google.com/maps/search/?api=1&query=Giardino+degli+Aranci+Roma"
-    },
-    {
-      title: "Colosseo e Fori Imperiali",
-      description: "Il maestoso anfiteatro Flavio simbolo eterno dell'Impero Romano, mozzafiato soprattutto al tramonto.",
-      category: "sight",
-      lat: 41.8902,
-      lng: 12.4922,
-      walkingDirections: "Scendi direttamente alla fermata Metro B Colosseo.",
-      mapUrl: "https://www.google.com/maps/search/?api=1&query=Colosseo+Roma"
-    },
-    {
-      title: "Garbatella Storica",
-      description: "Lotti storici ad architettura barocca popolare con piccoli cortili, giardini fioriti e gatti che riposano all'ombra.",
-      category: "sight",
-      lat: 41.8624,
-      lng: 12.4891,
-      walkingDirections: "Prendi la Metro B fino alla fermata Garbatella, poi prosegui a piedi per 5 minuti verso Piazza Damiano Sauli.",
-      mapUrl: "https://www.google.com/maps/search/?api=1&query=Garbatella+Roma"
-    },
-    {
-      title: "Villa Borghese - Laghetto",
-      description: "Splendido parco pubblico romano ideale per una passeggiata in barca a remi sotto il Tempio di Esculapio.",
-      category: "nature",
-      lat: 41.9125,
-      lng: 12.4862,
-      walkingDirections: "Prendi la Metro A fino a Flaminio, poi sali la scalinata del Pincio ed entra nel parco.",
-      mapUrl: "https://www.google.com/maps/search/?api=1&query=Villa+Borghese+Laghetto"
     }
   ];
 
-  // Try to match keywords in the link
   if (link) {
     const l = link.toLowerCase();
-    if (l.includes("pizza") || l.includes("ristorante") || l.includes("food") || l.includes("mangiare")) {
-      return list[1];
-    }
-    if (l.includes("parco") || l.includes("villa") || l.includes("giardino") || l.includes("nature")) {
-      return list[2];
-    }
-    if (l.includes("colosseo") || l.includes("colosseum")) {
-      return list[3];
-    }
-    if (l.includes("garbatella")) {
-      return list[4];
-    }
+    if (l.includes("pizza") || l.includes("food")) return list[1];
+    if (l.includes("parco") || l.includes("giardino")) return list[2];
   }
 
-  // Fallback to a random selection or matching category
   if (requestedCategory) {
     const matches = list.filter(item => item.category === requestedCategory);
-    if (matches.length > 0) {
-      return matches[Math.floor(Math.random() * matches.length)];
+    if (matches.length > 0) return matches[Math.floor(Math.random() * matches.length)];
+  }
+
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// REST API endpoint to extract book details from a link or screenshot
+app.post("/api/analyze-book", async (req, res) => {
+  const { link, screenshot, category } = req.body;
+
+  try {
+    const ai = getAiClient();
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey || apiKey === "MY_GEMINI_API_KEY") {
+      return res.json({
+        success: true,
+        source: "mock",
+        data: getMockBook(link, category)
+      });
     }
+
+    let contents: any[] = [];
+    let promptText = "Analizza l'immagine o il link fornito per estrarre le informazioni sul libro.";
+
+    if (link) {
+      promptText += `\nLink / Testo del post: ${link}`;
+    }
+
+    contents.push({ text: promptText });
+
+    if (screenshot) {
+      const matches = screenshot.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        contents.push({
+          inlineData: {
+            mimeType: matches[1],
+            data: matches[2]
+          }
+        });
+      }
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: { parts: contents },
+      config: {
+        systemInstruction: `Sei un sistema OCR ed esperto bibliografico. 
+Se è presente un'immagine, esegui la lettura visiva (OCR) del testo presente sia in sovrimpressione che sulla copertina del libro.
+Trascrivi ESATTAMENTE il titolo e l'autore leggendoli direttamente dall'immagine. NON inventare titoli non presenti nella foto.
+
+Rispondi in italiano in formato JSON:
+1. title: Titolo esatto del libro letto nell'immagine.
+2. author: Nome dell'autore (se visibile nell'immagine, altrimenti "Autore non specificato").
+3. description: Una breve sintesi della trama o dei temi trattati in italiano (max 2 frasi).
+4. language: Strictly "italian" (se l'autore o l'opera originale è italiana) o "international".`,
+        temperature: 0.1,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            author: { type: Type.STRING },
+            description: { type: Type.STRING },
+            language: { type: Type.STRING }
+          },
+          required: ["title", "author", "description", "language"]
+        }
+      }
+    });
+
+    const textResult = response.text;
+    if (!textResult) {
+      throw new Error("No response text from Gemini API.");
+    }
+
+    const data = JSON.parse(textResult);
+    return res.json({ success: true, source: "gemini", data });
+
+  } catch (error: any) {
+    console.error("Gemini book analysis error:", error);
+    return res.json({
+      success: true,
+      source: "fallback",
+      error: error.message,
+      data: getMockBook(link, category)
+    });
+  }
+});
+
+// Utility function for mock book data
+function getMockBook(link?: string, requestedCategory?: string) {
+  const list = [
+    {
+      title: "Il nome della rosa",
+      author: "Umberto Eco",
+      description: "Un monaco francescano indaga su una serie di misteriosi omicidi in un'abbazia benedettina del XIV secolo, tra teologia e libri proibiti.",
+      language: "italian"
+    },
+    {
+      title: "Norwegian Wood",
+      author: "Haruki Murakami",
+      description: "Un giovane studente giapponese ripercorre i ricordi della sua giovinezza, sospesa tra amore e perdita.",
+      language: "international"
+    }
+  ];
+
+  if (link) {
+    const l = link.toLowerCase();
+    if (l.includes("murakami")) return list[1];
+    if (l.includes("eco")) return list[0];
+  }
+
+  if (requestedCategory === "italian" || requestedCategory === "international") {
+    const matches = list.filter(item => item.language === requestedCategory);
+    if (matches.length > 0) return matches[Math.floor(Math.random() * matches.length)];
   }
 
   return list[Math.floor(Math.random() * list.length)];
