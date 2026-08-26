@@ -91,7 +91,7 @@ export default function AddBookModal({
     try {
       let aiData: any = null;
 
-      const resp = await fetch("/api/analyze-place", {
+      const resp = await fetch("/api/analyze-book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
