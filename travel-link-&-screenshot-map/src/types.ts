@@ -26,4 +26,18 @@ export interface GeneralLinkItem {
   imageUrl?: string;
 }
 
+export interface BookItem {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  language: "italian" | "international";
+  read: boolean; // false = Da leggere, true = Già letto
+  notes?: string;
+  link?: string;
+  imageUrl?: string;
+  favorite?: boolean;
+  createdAt: string;
+}
+
 export type MainCategory = "travel" | "ideas" | "books" | "movies" | "recipes";
