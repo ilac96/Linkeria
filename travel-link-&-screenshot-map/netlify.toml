@@ -1,0 +1,9 @@
+[[redirects]]
+  from = "/api/analyze-place"
+  to = "https://rntyqdgjgjzwfnqixhyb.supabase.co/functions/v1/analyze-place"
+  status = 200
+
+[[redirects]]
+  from = "/api/analyze-book"
+  to = "https://rntyqdgjgjzwfnqixhyb.supabase.co/functions/v1/swift-api"
+  status = 200
