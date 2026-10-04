@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY as string
 
+console.log("SUPABASE URL:", supabaseUrl)
+console.log("SUPABASE KEY PRESENT:", !!supabaseAnonKey)
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn("Attenzione: Chiavi di Supabase mancanti nel file .env.local!")
 }
