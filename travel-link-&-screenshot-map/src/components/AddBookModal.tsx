@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { Upload, X, Loader2, Sparkles, AlertCircle, Check, Link as LinkIcon, Image as ImageIcon, BookOpen, PenLine } from "lucide-react";
 import { BookItem } from "../types";
 import { ItalianFlagBadge, WorldGlobeBadge } from "./BookBadges";
+import { supabase } from "../supabaseClient";
 
 interface AddBookModalProps {
   isOpen: boolean;
@@ -89,27 +90,70 @@ export default function AddBookModal({
     setLoadingMessage("L'AI sta analizzando la foto o il titolo del libro...");
 
     try {
+      
       let aiData: any = null;
 
-      const resp = await fetch("/api/analyze-book", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          link: cleanInput || null,
-          screenshot: selectedImage || null,
-          category: "books",
-        }),
-      });
+      // 1. Prova il backend locale
+      try {
+        const resp = await fetch("/api/analyze-book", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            link: cleanInput || null,
+            screenshot: selectedImage || null,
+            category: "books",
+          }),
+        });
 
-      if (resp.ok) {
-        const json = await resp.json();
-        if (json?.data) {
-          aiData = json.data;
+        if (resp.ok) {
+          const json = await resp.json();
+          if (json?.data) {
+            aiData = json.data;
+          }
         }
+      } catch (e) {
+        console.warn(
+          "Backend locale non disponibile, provo Supabase:",
+          e
+        );
+      }
+
+      // 2. Fallback su Supabase, come in AddPlaceModal
+      if (!aiData) {
+        const { data: aiResult, error: fnError } =
+          await supabase.functions.invoke("analyze-book", {
+            body: {
+              link: cleanInput || null,
+              base64Image: selectedImage || null,
+              category: "books",
+            },
+          });
+
+        if (fnError) {
+          let realMessage = fnError.message;
+
+          try {
+            const errBody = await fnError.context?.json();
+            if (errBody?.error) {
+              realMessage = errBody.error;
+            }
+          } catch (_) {}
+
+          throw new Error(realMessage);
+        }
+
+        if (aiResult?.error) {
+          throw new Error(aiResult.error);
+        }
+
+        // La Edge Function restituisce i dati dentro "data"
+        aiData = aiResult?.data ?? aiResult;
       }
 
       if (!aiData) {
-        throw new Error("L'AI non è riuscita a estrarre i dettagli del libro. Puoi comunque compilare i campi a mano.");
+        throw new Error(
+          "L'AI non è riuscita a estrarre i dettagli del libro. Puoi comunque compilare i campi a mano."
+        );
       }
 
       setExtractedData({
