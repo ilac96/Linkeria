@@ -90,89 +90,60 @@ export default function AddBookModal({
     setLoadingMessage("L'AI sta analizzando la foto o il titolo del libro...");
 
     try {
-      
-      let aiData: any = null;
+  const { data: aiResult, error: fnError } =
+    await supabase.functions.invoke("analyze-book", {
+      body: {
+        link: cleanInput || null,
+        base64Image: selectedImage || null,
+        category: "books",
+      },
+    });
 
-      // 1. Prova il backend locale
-      try {
-        const resp = await fetch("/api/analyze-book", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            link: cleanInput || null,
-            screenshot: selectedImage || null,
-            category: "books",
-          }),
-        });
+  if (fnError) {
+    let realMessage = fnError.message;
 
-        if (resp.ok) {
-          const json = await resp.json();
-          if (json?.data) {
-            aiData = json.data;
-          }
-        }
-      } catch (e) {
-        console.warn(
-          "Backend locale non disponibile, provo Supabase:",
-          e
-        );
+    try {
+      const errBody = await fnError.context?.json();
+      if (errBody?.error) {
+        realMessage = errBody.error;
       }
+    } catch (_) {}
 
-      // 2. Fallback su Supabase, come in AddPlaceModal
-      if (!aiData) {
-        const { data: aiResult, error: fnError } =
-          await supabase.functions.invoke("analyze-book", {
-            body: {
-              link: cleanInput || null,
-              base64Image: selectedImage || null,
-              category: "books",
-            },
-          });
+    throw new Error(realMessage);
+  }
 
-        if (fnError) {
-          let realMessage = fnError.message;
+  if (aiResult?.error) {
+    throw new Error(aiResult.error);
+  }
 
-          try {
-            const errBody = await fnError.context?.json();
-            if (errBody?.error) {
-              realMessage = errBody.error;
-            }
-          } catch (_) {}
+  const aiData = aiResult?.data ?? aiResult;
 
-          throw new Error(realMessage);
-        }
+  if (!aiData) {
+    throw new Error(
+      "L'AI non è riuscita a estrarre i dettagli del libro. Puoi comunque compilare i campi a mano."
+    );
+  }
 
-        if (aiResult?.error) {
-          throw new Error(aiResult.error);
-        }
-
-        // La Edge Function restituisce i dati dentro "data"
-        aiData = aiResult?.data ?? aiResult;
-      }
-
-      if (!aiData) {
-        throw new Error(
-          "L'AI non è riuscita a estrarre i dettagli del libro. Puoi comunque compilare i campi a mano."
-        );
-      }
-
-      setExtractedData({
-        title: aiData.title || cleanInput || "Nuovo Libro",
-        author: aiData.author || "Autore non specificato",
-        description: aiData.description || "Descrizione e trama del libro.",
-        language: aiData.language === "international" ? "international" : "italian",
-        read: false,
-        notes: "",
-        link: cleanInput.startsWith("http") ? cleanInput : undefined,
-        imageUrl: selectedImage || aiData.imageUrl || null,
-      });
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Impossibile analizzare con l'AI.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  setExtractedData({
+    title: aiData.title || cleanInput || "Nuovo Libro",
+    author: aiData.author || "Autore non specificato",
+    description:
+      aiData.description || "Descrizione e trama del libro.",
+    language:
+      aiData.language === "international"
+        ? "international"
+        : "italian",
+    read: false,
+    notes: "",
+    link: cleanInput.startsWith("http") ? cleanInput : undefined,
+    imageUrl: selectedImage || aiData.imageUrl || null,
+  });
+} catch (err: any) {
+  console.error(err);
+  setError(err?.message || "Impossibile analizzare con l'AI.");
+} finally {
+  setIsLoading(false);
+}
 
   const handleManualEntry = () => {
     setError(null);
@@ -482,4 +453,5 @@ export default function AddBookModal({
       </div>
     </div>
   );
+}
 }
