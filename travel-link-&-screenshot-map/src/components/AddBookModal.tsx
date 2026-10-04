@@ -112,7 +112,7 @@ export default function AddBookModal({
 
     try {
       const { data: aiResult, error: fnError } =
-        await supabase.functions.invoke("analyze-book", {
+        await supabase.functions.invoke("swift-api", {
           body: {
             link: cleanInput || null,
             base64Image: selectedImage || null,
