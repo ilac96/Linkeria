@@ -288,10 +288,14 @@ export default function App() {
           .select("*")
           .order("created_at", { ascending: false });
 
-        if (error) {
-          console.warn("Supabase load notice (using initial data if offline):", error.message);
-          return;
-        }
+       if (error) {
+  console.error("❌ ERRORE CARICAMENTO LINKS:", error);
+  console.error("❌ ERRORE MESSAGE:", error.message);
+  console.error("❌ ERRORE DETAILS:", error.details);
+  console.error("❌ ERRORE HINT:", error.hint);
+  console.error("❌ ERRORE CODE:", error.code);
+  return;
+}
 
         const rows = (data || []) as LinksRow[];
         const travelCategories = ["travel", "food", "sight", "nature"];
