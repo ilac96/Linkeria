@@ -163,7 +163,7 @@ function placeToInsertRow(place: Omit<Place, "id" | "createdAt" | "visited">) {
     source_type: "manual",
     title: place.title,
     original_url: place.mapUrl || null,
-    image_url: cleanImageUrl,
+    image_url: null,
     notes: null,
     status: "to_visit",
     metadata: {
@@ -201,7 +201,7 @@ function bookToInsertRow(book: Omit<BookItem, "id" | "createdAt">) {
     source_type: "manual",
     title: book.title,
     original_url: book.link || null,
-    image_url: book.imageUrl || null,
+    image_url: null,
     notes: book.author || null,
     status: book.read ? "read" : "to_read",
     metadata: {
@@ -283,10 +283,10 @@ export default function App() {
       try {
         setLoading(true);
 
-        const { data, error } = await supabase
-          .from("links")
-          .select("*")
-          .order("created_at", { ascending: false });
+       const { data, error } = await supabase
+  .from("links")
+  .select("id, created_at, category, source_type, title, original_url, notes, status, metadata")
+  .order("created_at", { ascending: false });
 
        if (error) {
   console.error("❌ ERRORE CARICAMENTO LINKS:", error);
